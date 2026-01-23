@@ -13,7 +13,6 @@ from NetUtils import ClientStatus
 
 from Items import LK2Item
 from Locations import LK2Location
-from worlds.tww.Items import LOOKUP_ID_TO_NAME
 
 if TYPE_CHECKING:
     import kvui

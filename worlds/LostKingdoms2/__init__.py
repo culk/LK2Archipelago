@@ -1,18 +1,18 @@
 import sqlite3
 import os
+from typing import Optional
 
-from BaseClasses import ItemClassification, Region
+from BaseClasses import ItemClassification, Region, MultiWorld
 from worlds.AutoWorld import WebWorld, World
 from .Items import LK2Item
 from .Locations import LK2Location
-from .Options import LostKingdoms2Options
-
+from .LK2Options import LostKingdoms2Options, WinConditionOptions
 
 class LostKingdoms2Web(WebWorld):
     theme = "jungle"
 
 
-class LostKingdoms2(World):
+class LostKingdoms2World(World):
     """
     Lost Kingdoms II, known as 'Rune II: Koruten no Kagi no Himitsu' in Japan, is a 2003 action role-playing game developed by FromSoftware and published by Activision. It is the sequel to Lost Kingdoms. Lost Kingdoms II is a card-based action role-playing game where battles are fought in real-time.
     """
@@ -54,8 +54,11 @@ class LostKingdoms2(World):
         "weapons": {"red_fairy", "world", "shop", "key_item"},
     }
 
+    def __init__(self, multiworld: MultiWorld, player: int):
+        super(LostKingdoms2World, self).__init__(multiworld, player)
+        self.win_condition: Optional[int] = 0
+
     def create_item(self, item: str) -> LK2Item:
-        item_id = self.item_name_to_id[str]
         cursor = self.conn.cursor()
         item_data = cursor.execute("Select name, hexCode from cards where name = ?", (item,)).fetchone()
         classification = ItemClassification.filler
@@ -102,64 +105,3 @@ class LostKingdoms2(World):
             "Client" : "APWorldVersion"
         }
 
-        # Output the spawn region name
-        output_data["Options"]["spawn"]: str = "Menu"
-
-        # Output Randomized Door info
-        output_data["Entrances"] = self.open_doors
-
-        # Output randomized Ghost info
-        output_data["Room Enemies"] = self.ghost_affected_regions
-
-        # Output which item has been placed at each location
-        locations = self.get_locations()
-        for location in locations:
-            if location.address is not None:
-                if location.item:
-                    itemid = 0
-                    if location.item.player == self.player:
-                        if location.address:
-                            if location.item.type == "Door Key":
-                                itemid = location.item.doorid
-                        roomid = REGION_LIST[location.parent_region.name]
-                        item_info = {
-                            "player": location.item.player,
-                            "name": location.item.name,
-                            "game": location.item.game,
-                            "classification": location.item.classification.name,
-                            "door_id": itemid,
-                            "room_no": roomid,
-                            "type": location.type,
-                            "loc_enum": location.jmpentry
-                        }
-                        if self.options.boo_health_option.value == 2 and location.name in ROOM_BOO_LOCATION_TABLE.keys():
-                            item_info.update({"boo_sphere": self.boo_spheres[location.name]})
-
-                        output_data["Locations"][location.name] = item_info
-                    else:
-                        roomid = REGION_LIST[location.parent_region.name]
-                        item_info = {
-                            "player": location.item.player,
-                            "name": location.item.name,
-                            "game": location.item.game,
-                            "classification": location.item.classification.name,
-                            "door_id": itemid,
-                            "room_no": roomid,
-                            "type": location.type,
-                            "loc_enum": location.jmpentry,
-                        }
-                        output_data["Locations"][location.name] = item_info
-                        if self.options.boo_health_option.value == 2 and location.name in ROOM_BOO_LOCATION_TABLE.keys():
-                            item_info.update({"boo_sphere": self.boo_spheres[location.name]})
-                else:
-                    item_info = {"name": "Nothing", "game": "Luigi's Mansion", "classification": "filler"}
-                output_data["Locations"][location.name] = item_info
-
-        # Outputs the plando details to our expected output file
-        # Create the output path based on the current player + expected patch file ending.
-        patch_path = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}"
-                                                    f"{LMPlayerContainer.patch_file_ending}")
-        # Create a zip (container) that will contain all the necessary output files for us to use during patching.
-        lm_container = LMPlayerContainer(output_data, patch_path, self.multiworld.player_name[self.player], self.player)
-        # Write the expected output zip container to the Generated Seed folder.
-        lm_container.write()
