@@ -36,7 +36,7 @@ class InvalidCleanISOError(Exception):
 class LK2PlayerContainer(APPlayerContainer):
     game = RANDOMIZER_NAME
     compression_method = zipfile.ZIP_DEFLATED
-    patch_file_ending = ".aplm"
+    patch_file_ending = ".aplk2"
 
     def __init__(self, player_choices: dict, patch_path: str, player_name: str, player: int,
         server: str = ""):
@@ -44,14 +44,14 @@ class LK2PlayerContainer(APPlayerContainer):
         super().__init__(patch_path, player, player_name, server)
 
     def write_contents(self, opened_zipfile: zipfile.ZipFile) -> None:
-        opened_zipfile.writestr("patch.aplm", json.dumps(self.output_data, indent=4, default=convert_to_base_types))
+        opened_zipfile.writestr("patch.aplk2", json.dumps(self.output_data, indent=4, default=convert_to_base_types))
         super().write_contents(opened_zipfile)
 
 
 class LK2USAAPPatch(APPatch, metaclass=AutoPatchRegister):
     game = RANDOMIZER_NAME
     hash = LK2_USA_MD5
-    patch_file_ending = ".aplm"
+    patch_file_ending = ".aplk2"
     result_file_ending = ".iso"
 
     procedure = ["custom"]
@@ -79,29 +79,29 @@ class LK2USAAPPatch(APPatch, metaclass=AutoPatchRegister):
         temp_path = os.path.join(tempfile.gettempdir(), "lost_kingdoms_2", CLIENT_VERSION, "libs")
         return temp_path
 
-    def patch(self, aplm_patch: str) -> str:
+    def patch(self, aplk2_patch: str) -> str:
         # Get the AP Path for the base ROM
-        lm_clean_iso = self.get_base_rom_path()
-        logger.info("Provided Lost Kingdoms 2 ISO Path was: " + lm_clean_iso)
+        lk2_clean_iso = self.get_base_rom_path()
+        logger.info("Provided Lost Kingdoms 2 ISO Path was: " + lk2_clean_iso)
 
-        base_path = os.path.splitext(aplm_patch)[0]
+        base_path = os.path.splitext(aplk2_patch)[0]
         output_file = base_path + self.result_file_ending
 
         try:
             # Verify we have a clean rom of the game first
-            self.verify_base_rom(lm_clean_iso, throw_on_missing_speedups=True)
+            self.verify_base_rom(lk2_clean_iso, throw_on_missing_speedups=True)
 
             # Use our randomize function to patch the file into an ISO.
             from ..LK2Generator import LK2Randomizer
-            with zipfile.ZipFile(aplm_patch, "r") as zf:
-               aplm_bytes = zf.read("patch.aplm")
-            LK2Randomizer(lm_clean_iso, output_file, aplm_bytes)
+            with zipfile.ZipFile(aplk2_patch, "r") as zf:
+               aplk2_bytes = zf.read("patch.aplk2")
+            LK2Randomizer(lk2_clean_iso, output_file, aplk2_bytes)
         except ImportError:
             logger.error(ImportError)
         return output_file
 
-    def read_contents(self, aplm_patch: str) -> dict[str, Any]:
-        with zipfile.ZipFile(aplm_patch, "r") as zf:
+    def read_contents(self, aplk2_patch: str) -> dict[str, Any]:
+        with zipfile.ZipFile(aplk2_patch, "r") as zf:
             with zf.open("archipelago.json", "r") as f:
                 manifest = json.load(f)
         if manifest["compatible_version"] > self.version:
@@ -143,6 +143,6 @@ class LK2USAAPPatch(APPatch, metaclass=AutoPatchRegister):
 
         # Use our randomize function to patch the file into an ISO.
         with zipfile.ZipFile(patch_file_path, "r") as zf:
-            aplm_bytes = zf.read("patch.aplm")
-        LK2Randomizer(vanilla_iso_path, output_iso_path, aplm_bytes)
+            aplk2_bytes = zf.read("patch.aplk2")
+        LK2Randomizer(vanilla_iso_path, output_iso_path, aplk2_bytes)
 

@@ -34,7 +34,7 @@ def run_client(*args):
 # Adds the launcher for our component and our client logo.
 components.append(
     Component("Lost Kingdoms II Client", func=run_client, component_type=Type.CLIENT,
-        file_identifier=SuffixIdentifier(".aplm"), icon="Archipelago_Icon"))
+        file_identifier=SuffixIdentifier(".aplk2"), icon="Archipelago_Icon"))
 icon_paths["Archipelago_Icon"] = f"ap:{__name__}/data/Archipelago_Icon.png"
 
 class LostKingdoms2Web(WebWorld):
@@ -165,11 +165,6 @@ class LostKingdoms2World(World):
 
     def generate_early(self) -> None:
         pass
-        #print("Adding starting inventory")
-        #starting_inventory = {"Hobgoblin", "Hobgoblin", "Hobgoblin", "Lizardman", "Lizardman", "Lizardman",
-        #                      "Mandragora", "Mandragora", "Mandragora", "Fairy", "Dragon Knight"}
-        #for item in starting_inventory:
-        #    self.multiworld.push_precollected(self.create_item(item))
 
     def create_regions(self):
         menu_region = Region("Menu", self.player, self.multiworld)
@@ -543,6 +538,7 @@ class LostKingdoms2World(World):
 
         for item in self.multiworld.itempool:
             if item.player == self.player:
+
                 state.collect(item, True)
 
         state.update_reachable_regions(self.player)
@@ -581,8 +577,8 @@ class LostKingdoms2World(World):
         patch_path = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}"
                                                     f"{LK2PlayerContainer.patch_file_ending}")
         # Create a zip (container) that will contain all the necessary output files for us to use during patching.
-        lm_container = LK2PlayerContainer(output_data, patch_path, self.multiworld.player_name[self.player], self.player)
+        lk2_container = LK2PlayerContainer(output_data, patch_path, self.multiworld.player_name[self.player], self.player)
         # Write the expected output zip container to the Generated Seed folder.
-        lm_container.write()
+        lk2_container.write()
 
 

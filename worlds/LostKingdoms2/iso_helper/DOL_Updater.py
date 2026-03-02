@@ -12,23 +12,23 @@ LM_PLAYER_NAME_BYTE_LENGTH = 64
 
 # Updates the main DOL file, which is the main file used for GC and Wii games. This section includes some custom code
 # inside the DOL file itself.
-def update_dol_offsets(lm_gen: "LostKingdoms2Randomizer"):
+def update_dol_offsets(lk2_gen: "LostKingdoms2Randomizer"):
     # Define all variables from the output data
-    slot_name: str = str(lm_gen.output_data["Name"])
+    slot_name: str = str(lk2_gen.output_data["Name"])
 
     # Find the main DOL file and read it.
     import gclib.dol
     from gclib.dol import DOL
-    lm_dol = DOL()
-    dol_data = lm_gen.gcm.read_file_data("sys/main.dol")
-    lm_dol.read(dol_data)
+    lk2 = DOL()
+    dol_data = lk2_gen.gcm.read_file_data("sys/main.dol")
+    lk2.read(dol_data)
 
     # Store Player name
-    lm_player_name = str(slot_name).strip()
-    lm_dol.data.seek(0x324740)
-    lm_dol.data.write(sbf.string_to_bytes_with_limit(lm_player_name, LM_PLAYER_NAME_BYTE_LENGTH))
+    lk2_player_name = str(slot_name).strip()
+    lk2.data.seek(0x324740)
+    lk2.data.write(sbf.string_to_bytes_with_limit(lk2_player_name, LM_PLAYER_NAME_BYTE_LENGTH))
 
 
     # Save all changes to the DOL itself.
-    lm_dol.save_changes()
-    lm_gen.gcm.changed_files["sys/main.dol"] = lm_dol.data
+    lk2.save_changes()
+    lk2_gen.gcm.changed_files["sys/main.dol"] = lk2.data

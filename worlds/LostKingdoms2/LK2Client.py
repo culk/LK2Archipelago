@@ -18,7 +18,8 @@ from .iso_helper.lk2_rom import LK2USAAPPatch
 from .Locations import lost_kingdoms_2_locations, lost_kingdoms_2_regions, lost_kingdoms_2_combos, \
     lost_kingdoms_2_bonus_draws
 from worlds.LostKingdoms2 import lost_kingdoms_2_cards, lost_kingdoms_2_key_items, lost_kingdoms_2_items, \
-    location_name_to_id, lost_kingdoms_2_shop_purchases
+    location_name_to_id, lost_kingdoms_2_shop_purchases, lost_kingdoms_2_jumping_cards, lost_kingdoms_2_flying_cards, \
+    lostkingdoms_2_custom_prices
 
 if TYPE_CHECKING:
     import kvui
@@ -466,34 +467,44 @@ def open_world():
 
 def randomize_shop_contents(ctx):
     random.seed(ctx.slot_data.get("Seed", -1))
-    cards = list(lost_kingdoms_2_cards.values())
+    cards = list(lost_kingdoms_2_cards.keys())
+    excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
+    cards = list(set(cards) - set(excluded_cards))
     for x in range (32):
-        card = random.choice(cards)
-        write_memory(CARD_SHOP_ADDRESS+x*2,int(card["hexCode"],16))
-        cards.remove(card)
+        card_name = random.choice(cards)
+        write_memory(CARD_SHOP_ADDRESS+x*2,int(lost_kingdoms_2_cards[card_name]["hexCode"],16))
+        cards.remove(card_name)
+
+    #Add custom prices for cards that lack prices
+    for card in lostkingdoms_2_custom_prices:
+        write_memory(CARD_INFO_TABLE_ADDRESS+230+22*16*lost_kingdoms_2_cards[card]["number"], lostkingdoms_2_custom_prices[card])
 
 def randomize_starting_deck(ctx):
     random.seed(ctx.slot_data.get("Seed", -1)+1)
-    cards = list(lost_kingdoms_2_cards.values())
+    cards = list(lost_kingdoms_2_cards.keys())
+    excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
+    cards = list(set(cards) - set(excluded_cards))
     for x in range(12):
-        card = random.choice(cards)
-        cards.remove(card)
-        write_memory(STARTING_DECK_ADDRESS + x * 2,int(card["hexCode"],16))
+        card_name = random.choice(cards)
+        cards.remove(card_name)
+        write_memory(STARTING_DECK_ADDRESS + x * 2,int(lost_kingdoms_2_cards[card_name]["hexCode"],16))
 
 def randomize_bonus_draws(ctx):
     random.seed(ctx.slot_data.get("Seed", -1)+2)
-    cards = list(lost_kingdoms_2_cards.values())
+    cards = list(lost_kingdoms_2_cards.keys())
+    excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
+    cards = list(set(cards) - set(excluded_cards))
     group_dict = {}
     for key in lost_kingdoms_2_bonus_draws:
         bonus_draw = lost_kingdoms_2_bonus_draws[key]
         if group_dict.get(bonus_draw["cardGroup"], 0):
-            card = group_dict.get(bonus_draw["cardGroup"])
-            write_memory(BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169, int(card["hexCode"], 16))
+            card_name = group_dict.get(bonus_draw["cardGroup"])
+            write_memory(BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169, int(lost_kingdoms_2_cards[card_name]["hexCode"], 16))
         else:
-            card = random.choice(cards)
-            cards.remove(card)
-            write_memory(BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169, int(card["hexCode"], 16))
-            group_dict[bonus_draw["cardGroup"]] = card
+            card_name = random.choice(cards)
+            cards.remove(card_name)
+            write_memory(BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169, int(lost_kingdoms_2_cards[card_name]["hexCode"], 16))
+            group_dict[bonus_draw["cardGroup"]] = card_name
 
 
 def has_item(self, name: str) -> bool:
@@ -855,18 +866,18 @@ def main(*launch_args: str):
     dolphin_launcher: DolphinLauncher = DolphinLauncher()
 
     parser = get_base_parser()
-    parser.add_argument('aplm_file', default="", type=str, nargs="?", help='Path to an APLM file')
+    parser.add_argument('aplk2_file', default="", type=str, nargs="?", help='Path to an APLK2 file')
     parser.add_argument('--name', default=None, help="Slot Name to connect as.")
     args = parser.parse_args(launch_args)
     logger.info("Launch args: " + str(launch_args))
 
     lk2_usa_manifest = None
-    if args.aplm_file:
+    if args.aplk2_file:
         lk2_usa_patch = LK2USAAPPatch()
         try:
-            lk2_usa_manifest = lk2_usa_patch.read_contents(args.aplm_file)
+            lk2_usa_manifest = lk2_usa_patch.read_contents(args.aplk2_file)
             server_address = lk2_usa_manifest["server"]
-            rom_path= lk2_usa_patch.patch(args.aplm_file)
+            rom_path= lk2_usa_patch.patch(args.aplk2_file)
         except Exception as ex:
             err_msg: str = f"Unable to patch your Lost Kingdoms 2 ROM as expected.\n" + \
                 f"APWorld Version: '{CLIENT_VERSION}'\nAdditional details:{str(ex)}"
