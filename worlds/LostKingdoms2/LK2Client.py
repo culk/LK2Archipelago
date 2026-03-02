@@ -477,7 +477,7 @@ def randomize_shop_contents(ctx):
 
     #Add custom prices for cards that lack prices
     for card in lostkingdoms_2_custom_prices:
-        write_memory(CARD_INFO_TABLE_ADDRESS+230+22*16*lost_kingdoms_2_cards[card]["number"], lostkingdoms_2_custom_prices[card])
+        write_memory(CARD_INFO_TABLE_ADDRESS+230+22*16*lost_kingdoms_2_cards[card]["number"], lostkingdoms_2_custom_prices[card]["price"])
 
 def randomize_starting_deck(ctx):
     random.seed(ctx.slot_data.get("Seed", -1)+1)
