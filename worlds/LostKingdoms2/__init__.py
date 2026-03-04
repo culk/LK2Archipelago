@@ -531,6 +531,7 @@ class LostKingdoms2World(World):
             "randomize_starting_deck": self.options.randomize_starting_deck.value,
             "randomize_shop_contents": self.options.randomize_shop_contents.value,
             "randomize_bonus_draws": self.options.randomize_bonus_draws.value,
+            "randomize_magic_stone_costs": self.options.randomize_magic_stone_costs.value,
         }
 
     def debug_regions(self):

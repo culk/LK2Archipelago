@@ -70,6 +70,7 @@ LEVEL_ID_ADDRESS = 0x80209262
 PLAYER_GOLD_ADDRESS = 0x8025d022
 CURR_HEALTH_ADDR = 0x80223c98
 SHOP_LOCATION_ADDRESS = 0x8025d018
+CARDS_LOADED = 0x80732bd4
 
 
 ONE_TIME_MODIFIERS_IN_GAME = False
@@ -465,27 +466,45 @@ def open_world():
     for region in lost_kingdoms_2_regions:
         write_memory(int(lost_kingdoms_2_regions[region]["RAMAddress"],16), 128, 1)
 
+#The higher the bias value, the less bias there is. 1 is the minimum
+def get_card_weights(cards, is_weighted: bool, target_cost: int, bias: int = 3) -> list[int]:
+    weights = []
+    logger.debug("Is weighted? " + str(is_weighted))
+    for card_name in cards:
+        if is_weighted:
+            weights.append(1 / (abs(lost_kingdoms_2_cards[card_name]["mana_cost"] - target_cost) + bias))
+        else:
+            weights.append(1)
+
+    return weights
+
 def randomize_shop_contents(ctx):
     random.seed(ctx.slot_data.get("Seed", -1))
     cards = list(lost_kingdoms_2_cards.keys())
     excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
     cards = list(set(cards) - set(excluded_cards))
+
     for x in range (32):
-        card_name = random.choice(cards)
+        weights = get_card_weights(cards, ctx.slot_data.get("randomize_shop_contents", 0) == 1, (x//8)*4)
+        card_name = random.choices(cards, weights=weights, k=1)[0]
+        logger.debug("Card set to shop slot " + str(x) + ": " + card_name)
         write_memory(CARD_SHOP_ADDRESS+x*2,int(lost_kingdoms_2_cards[card_name]["hexCode"],16))
         cards.remove(card_name)
 
     #Add custom prices for cards that lack prices
     for card in lostkingdoms_2_custom_prices:
-        write_memory(CARD_INFO_TABLE_ADDRESS+230+22*16*lost_kingdoms_2_cards[card]["number"], lostkingdoms_2_custom_prices[card]["price"])
+        write_memory(CARD_INFO_TABLE_ADDRESS+230+22*16*lost_kingdoms_2_cards[card]["orderInMemory"], lostkingdoms_2_custom_prices[card]["price"])
 
 def randomize_starting_deck(ctx):
     random.seed(ctx.slot_data.get("Seed", -1)+1)
     cards = list(lost_kingdoms_2_cards.keys())
     excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
     cards = list(set(cards) - set(excluded_cards))
+
     for x in range(12):
-        card_name = random.choice(cards)
+        weights = get_card_weights(cards, ctx.slot_data.get("randomize_starting_deck", 0) == 1, 1)
+        logger.debug(weights)
+        card_name = random.choices(cards, weights=weights, k=1)[0]
         cards.remove(card_name)
         write_memory(STARTING_DECK_ADDRESS + x * 2,int(lost_kingdoms_2_cards[card_name]["hexCode"],16))
 
@@ -495,17 +514,26 @@ def randomize_bonus_draws(ctx):
     excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
     cards = list(set(cards) - set(excluded_cards))
     group_dict = {}
+
     for key in lost_kingdoms_2_bonus_draws:
         bonus_draw = lost_kingdoms_2_bonus_draws[key]
         if group_dict.get(bonus_draw["cardGroup"], 0):
             card_name = group_dict.get(bonus_draw["cardGroup"])
             write_memory(BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169, int(lost_kingdoms_2_cards[card_name]["hexCode"], 16))
         else:
-            card_name = random.choice(cards)
+            weights = get_card_weights(cards, ctx.slot_data.get("randomize_bonus_draws", 0) == 1, bonus_draw["cardGroup"]//5)
+            card_name = random.choices(cards, weights=weights, k=1)[0]
             cards.remove(card_name)
             write_memory(BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169, int(lost_kingdoms_2_cards[card_name]["hexCode"], 16))
             group_dict[bonus_draw["cardGroup"]] = card_name
 
+def randomize_magic_stone_costs(ctx):
+    random.seed(ctx.slot_data.get("Seed", -1) + 3)
+    for card_name in lost_kingdoms_2_cards:
+        new_mana_cost = random.randint(1,15)
+        write_memory(CARD_INFO_TABLE_ADDRESS + 22 * 16 * lost_kingdoms_2_cards[card_name]["orderInMemory"] + 194 + 32, new_mana_cost,  1)
+        lost_kingdoms_2_cards[card_name]["mana_cost"] = new_mana_cost
+        logger.debug("Setting " + str(card_name) + " mana cost to " + str(new_mana_cost))
 
 def has_item(self, name: str) -> bool:
     """Check if player has received an item"""
@@ -719,6 +747,12 @@ def check_ingame() -> bool:
     except:
         return False
 
+def check_cards_loaded() -> bool:
+    try:
+        return read_memory(CARDS_LOADED,4) == 80416
+    except:
+        return False
+
 def check_inshop() -> bool:
     try:
         return read_memory(SHOP_MENU_ADDRESS) != 0
@@ -783,8 +817,10 @@ async def dolphin_sync_task_main_task(ctx: LK2Context):
 
         try:
             if dolphin_memory_engine.is_hooked() and ctx.dolphin_status == CONNECTION_CONNECTED_STATUS:
-                if (not ONE_TIME_MODIFIERS_MAIN_MENU) and ctx.slot_data:
+                if (not ONE_TIME_MODIFIERS_MAIN_MENU) and ctx.slot_data and check_cards_loaded():
                     logger.debug("Seed is " + str(ctx.slot_data["Seed"]))
+                    if ctx.slot_data.get("randomize_magic_stone_costs", 0):
+                        randomize_magic_stone_costs(ctx)
                     if ctx.slot_data.get("randomize_starting_deck", 0):
                         randomize_starting_deck(ctx)
                     if ctx.slot_data.get("randomize_shop_contents", 0):

@@ -35,17 +35,49 @@ class OpenWorldConditionOption(Toggle):
     display_name = "Open World"
     default = 0
 
-class RandomizeStartingDeck(Toggle):
+class RandomizeStartingDeck(Choice):
+    """
+    Choose whether to randomize your starting deck.
+    Off = Vanilla, no randomization of the starting deck.
+    Weighted Random = Randomized, with a much higher chance to get cards with low magic costs. (No key cards)
+    Fully Random = Randomized; every card is equally likely to appear in your starting deck. (No key cards)
+    """
     display_name = "Randomize Starting Deck"
+    option_off = 0
+    option_weighted_random = 1
+    option_fully_random = 2
     default = 1
 
-class RandomizeShopContents(Toggle):
+class RandomizeShopContents(Choice):
+    """
+    Choose whether to randomize what cards appear in the shops.
+    Off = Vanilla, no randomization of the shops' contents.
+    Weighted Random = Randomized. Early shops are more likely to have low magic cost cards, later shops are more likely to have higher cost cards. (No key cards)
+    Fully Random = Randomized; every card is equally likely to appear in the shop. (No key cards)
+    """
     display_name = "Randomize Shop Contents"
+    option_off = 0
+    option_weighted_random = 1
+    option_fully_random = 2
     default = 1
 
-class RandomizeBonusDraws(Toggle):
+class RandomizeBonusDraws(Choice):
+    """
+    Choose whether to randomize the contents of the bonus draws at the end of each level.
+    Off = Vanilla, no randomization of the bonus draw.
+    Weighted Random = Randomized. Early bonus are more likely to have low magic cost cards, later bonus draw are more likely to have higher cost cards. (No key cards)
+    Fully Random = Randomized; every card is equally likely to appear in the bonus draws. (No key cards).
+    """
     display_name = "Randomize Bonus Draws"
+    option_off = 0
+    option_weighted_random = 1
+    option_fully_random = 2
     default = 1
+
+class RandomizeMagicCosts(Toggle):
+    """Choose to randomize the magic stone cost of every card to between 1-15. Warning: This can trivialize the game"""
+    display_name = "Randomize Magic Costs"
+    default = 0
 
 
 @dataclass
@@ -59,3 +91,4 @@ class LostKingdoms2Options(PerGameCommonOptions):
     randomize_starting_deck : RandomizeStartingDeck
     randomize_shop_contents : RandomizeShopContents
     randomize_bonus_draws : RandomizeBonusDraws
+    randomize_magic_stone_costs : RandomizeMagicCosts
