@@ -637,5 +637,28 @@ lost_kingdoms_2_bonus_draws = {
     "ToS Bonus Draw - Rare": {"level": "Temple of Sharacia", "rarity": "Rare", "cardGroup": 60, "address": "1832AB", "cardId": 66, "type": "Bonus Draw"},
 }
 
+lost_kingdoms_2_enemies = {
+    "Nobleman's Residence - Enemysanity - Beaker" : {"level" : "Nobleman's Residence","RAMAddress" : "80223fb8", "type" : "Enemysanity", 'missable': 1},
+    "Nobleman's Residence - Enemysanity - Dark Raven" : {"level" : "Nobleman's Residence","RAMAddress" : "802240c8", "type" : "Enemysanity", 'missable': 1},
+    "Nobleman's Residence - Enemysanity - Hell Hound #1" : {"level" : "Nobleman's Residence","RAMAddress" : "80224948", "type" : "Enemysanity", 'missable': 0},
+
+    "Nobleman's Residence - Enemysanity - Dark Raven #2" : {"level" : "Nobleman's Residence","RAMAddress" : "80224a58", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Dark Raven #3" : {"level" : "Nobleman's Residence","RAMAddress" : "80224728", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Beaker #2" : {"level" : "Nobleman's Residence","RAMAddress" : "80224618", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Beaker #3" : {"level" : "Nobleman's Residence","RAMAddress" : "802242e8", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Beaker #4" : {"level" : "Nobleman's Residence","RAMAddress" : "802241d8", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Incubus #1" : {"level" : "Nobleman's Residence","RAMAddress" : "80224508", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Succubus #1" : {"level" : "Nobleman's Residence","RAMAddress" : "80224b68", "type" : "Enemysanity", 'missable': 0},
+    #Require Mysterious Key
+    "Nobleman's Residence - Enemysanity - Hell Hound #2" : {"level" : "Nobleman's Residence","RAMAddress" : "80224c78", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Succubus #2" : {"level" : "Nobleman's Residence","RAMAddress" : "802254f8", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Incubus #2" : {"level" : "Nobleman's Residence","RAMAddress" : "802251c8", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Succubus #3" : {"level" : "Nobleman's Residence","RAMAddress" : "80224fa8", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Incubus #3" : {"level" : "Nobleman's Residence","RAMAddress" : "802250b8", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Succubus #4" : {"level" : "Nobleman's Residence","RAMAddress" : "802252d8", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Hell Hound #3" : {"level" : "Nobleman's Residence","RAMAddress" : "802253e8", "type" : "Enemysanity", 'missable': 0},
+    "Nobleman's Residence - Enemysanity - Hell Hound #4" : {"level" : "Nobleman's Residence","RAMAddress" : "802243f8", "type" : "Enemysanity", 'missable': 0},
+}
+
 lost_kingdoms_2_locations = lost_kingdoms_2_chests | lost_kingdoms_2_red_fairies | lost_kingdoms_2_key_locations | lost_kingdoms_2_combos | lost_kingdoms_2_bonus_draws | lost_kingdoms_2_shop_purchases
 lost_kingdoms_2_locations["Magic Boosters Activation"] = magic_boosters_location

@@ -313,3 +313,8 @@ lost_kingdoms_2_items["Red Fairy"] = {}
 lost_kingdoms_2_items["Red Fairy"]["Type"] = "Red Fairy"
 lost_kingdoms_2_items["Red Fairy"]["Amount"] = 100
 lost_kingdoms_2_items["Red Fairy"]["id"] = 3000
+
+lost_kingdoms_2_items["Progressive Player Level"] = {}
+lost_kingdoms_2_items["Progressive Player Level"]["Type"] = "Progressive Player Level"
+lost_kingdoms_2_items["Progressive Player Level"]["Amount"] = 19
+lost_kingdoms_2_items["Progressive Player Level"]["id"] = 4000

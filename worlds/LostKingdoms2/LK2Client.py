@@ -66,6 +66,7 @@ THIRD_SHOP_UNLOCK_FLAG = 0x8025e04c
 SHOP_MENU_ADDRESS = 0x80275c58
 LEVEL_ID_ADDRESS = 0x80209262
 PLAYER_GOLD_ADDRESS = 0x8025d022
+PLAYER_LEVEL_ADDRESS = 0x8025d02c
 CURR_HEALTH_ADDR = 0x80223c98
 SHOP_LOCATION_ADDRESS = 0x8025d018
 CARDS_LOADED = 0x80732bd4
@@ -75,7 +76,9 @@ CUSTOM_CODE_ADDRESS_1 = 0x80001850
 CUSTOM_CODE_JUMP_2 = 0x80091274
 CUSTOM_CODE_RETURN_2 = 0x800F7F04
 CUSTOM_CODE_ADDRESS_2 = CUSTOM_CODE_ADDRESS_1+52
+CUSTOM_LEVEL_UP_CODE = CUSTOM_CODE_ADDRESS_2+108
 INVALIDATE_ADDRESS = 0x800f31dc
+PROGRESSIVE_LEVELING_ADDRESS = 0X8025d01d
 
 
 ONE_TIME_MODIFIERS_IN_GAME = False
@@ -323,6 +326,8 @@ def _give_item(ctx: LK2Context, item_name: str) -> bool:
         return give_key_item(ctx,item_name)
     elif item["Type"] == "Magic Boosters":
         return activate_magic_boosters(ctx)
+    elif item["Type"] == "Progressive Player Level":
+        return give_progressive_level(ctx)
     elif item == "Victory":
         return True
     else:
@@ -397,6 +402,18 @@ def give_key_item(ctx,item_name: str) -> bool:
         logger.error(e)
         return False
 
+def give_progressive_level(ctx) -> bool:
+    try:
+        if is_in_level():
+            write_memory(PROGRESSIVE_LEVELING_ADDRESS, read_memory(PROGRESSIVE_LEVELING_ADDRESS, 1),1)
+            increment_item_index(ctx)
+        else:
+            write_memory(PLAYER_LEVEL_ADDRESS,read_memory(PLAYER_LEVEL_ADDRESS,1),1)
+        return True
+    except Exception as e:
+        logger.error(e)
+        return False
+
 
 def increment_item_index(ctx):
     index = read_memory(ITEM_INDEX_ADDRESS)
@@ -435,43 +452,110 @@ def modify_code(ctx):
     #Prevent red fairies from increasing red fairy count
     if ctx.slot_data.get("fairysanity", 0):
         write_memory(0x80077034, 0x38040000, 4)
-
+    
+    #Change the bl at CUSTOM_CODE_JUMP to go to our custom code
+    write_memory(CUSTOM_CODE_JUMP_1, make_bl(CUSTOM_CODE_JUMP_1,CUSTOM_CODE_ADDRESS_1), 4)
+    #Store the current value of r3
+    write_memory(CUSTOM_CODE_ADDRESS_1,0x9061FFF8,4)
+    #Store the current value of r4
+    write_memory(CUSTOM_CODE_ADDRESS_1+4, 0x9081FFF4, 4)
+    #Store the address we want to invalidate in r3
+    write_memory(CUSTOM_CODE_ADDRESS_1+8, 0x3C608006, 4)
+    write_memory(CUSTOM_CODE_ADDRESS_1+12,0x6063E7C4,4)
+    #Store the value 4 in r4 to only invalidate a single instruction
+    write_memory(CUSTOM_CODE_ADDRESS_1+16,0x38800004,4)
+    #Store the LR onto the stack
+    write_memory(CUSTOM_CODE_ADDRESS_1+20, 0x7C0802A6,4)
+    write_memory(CUSTOM_CODE_ADDRESS_1+24, 0x9001FFFC, 4)
+    #Jump to the ICInvalidateRange function
+    write_memory(CUSTOM_CODE_ADDRESS_1+28, make_bl(CUSTOM_CODE_ADDRESS_1 + 28,INVALIDATE_ADDRESS),4)
+    #Write the stored LR back into the LR register
+    write_memory(CUSTOM_CODE_ADDRESS_1+32, 0x8001FFFC, 4)
+    write_memory(CUSTOM_CODE_ADDRESS_1+36, 0x7C0803A6, 4)
+    #Write the stored r3 value back into r3
+    write_memory(CUSTOM_CODE_ADDRESS_1+40, 0x8061FFF8, 4)
+    #Write the stored value of r4 back into r4
+    write_memory(CUSTOM_CODE_ADDRESS_1+44, 0x8081FFF4, 4)
+    #Jump back to original destination
+    write_memory(CUSTOM_CODE_ADDRESS_1+48, make_b(CUSTOM_CODE_ADDRESS_1+48,CUSTOM_CODE_RETURN_1), 4)
+    
     # Change the bl at CUSTOM_CODE_JUMP_2 to go to our custom code
-    #write_memory(CUSTOM_CODE_JUMP_2, make_bl(CUSTOM_CODE_JUMP_2, CUSTOM_CODE_ADDRESS_2), 4)
+    write_memory(CUSTOM_CODE_JUMP_2, make_bl(CUSTOM_CODE_JUMP_2, CUSTOM_CODE_ADDRESS_2), 4)
     # Allocate stack frame
-    #write_memory(CUSTOM_CODE_ADDRESS_2, 0x9421FFE0, 4)  # stwu sp, -0x20(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2, 0x9421FFE0, 4)  # stwu sp, -0x20(sp)
     # Store the current value of r3
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 4, 0x9061000C, 4)  # stw r3, 0x000C(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 4, 0x9061000C, 4)  # stw r3, 0x000C(sp)
     # Store the current value of r4
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 8, 0x90810010, 4)  # stw r4, 0x0010(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 8, 0x90810010, 4)  # stw r4, 0x0010(sp)
     # Store the current value of r5
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 12, 0x90A10014, 4)  # stw r5, 0x0014(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 12, 0x90A10014, 4)  # stw r5, 0x0014(sp)
     # Store the address we want to invalidate in r3
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 16, 0x3C608000, 4)  # lis r3, 0x8000
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 20, 0x606318A8, 4)  # ori r3, r3, 0x18A8
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 16, 0x3C608000, 4)  # lis r3, 0x8000
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 20, 0x606318A8, 4)  # ori r3, r3, 0x18A8
     # Store the value 0x28 to invalidate all the nops
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 24, 0x38800028, 4)  # li r4, 0x28
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 24, 0x38800028, 4)  # li r4, 0x28
     # Store the LR onto the stack
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 28, 0x7C0802A6, 4)  # mflr r0
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 32, 0x90010008, 4)  # stw r0, 0x0008(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 28, 0x7C0802A6, 4)  # mflr r0
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 32, 0x90010008, 4)  # stw r0, 0x0008(sp)
+    #Progressive leveling code jump
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 36, make_bl(CUSTOM_CODE_ADDRESS_2 + 36, CUSTOM_LEVEL_UP_CODE), 4)
     # Write 10 nop instructions that can be used in the future
-    #for x in range(10):
-    #    write_memory(CUSTOM_CODE_ADDRESS_2 + x * 4 + 36, 0x60000000, 4)
+    for x in range(9):
+        write_memory(CUSTOM_CODE_ADDRESS_2 + x * 4 + 40, 0x60000000, 4)
     # Jump to the ICInvalidateRange function
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 76, make_bl(CUSTOM_CODE_ADDRESS_2 + 76, INVALIDATE_ADDRESS), 4)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 76, make_bl(CUSTOM_CODE_ADDRESS_2 + 76, INVALIDATE_ADDRESS), 4)
     # Write the stored LR back into the LR register
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 80, 0x80010008, 4)  # lwz r0, 0x0008(sp)
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 84, 0x7C0803A6, 4)  # mtlr r0
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 80, 0x80010008, 4)  # lwz r0, 0x0008(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 84, 0x7C0803A6, 4)  # mtlr r0
     # Write the stored r3 value back into r3
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 88, 0x8061000C, 4)  # lwz r3, 0x000C(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 88, 0x8061000C, 4)  # lwz r3, 0x000C(sp)
     # Write the stored value of r4 back into r4
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 92, 0x80810010, 4)  # lwz r4, 0x0010(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 92, 0x80810010, 4)  # lwz r4, 0x0010(sp)
     # Write the stored value of r5 back into r5
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 96, 0x80A10014, 4)  # lwz r5, 0x0014(sp)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 96, 0x80A10014, 4)  # lwz r5, 0x0014(sp)
     # Deallocate stack frame
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 100, 0x38210020, 4)  # addi sp, sp, 0x20
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 100, 0x38210020, 4)  # addi sp, sp, 0x20
     # Jump back to original destination
-    #write_memory(CUSTOM_CODE_ADDRESS_2 + 104, make_b(CUSTOM_CODE_ADDRESS_2 + 104, CUSTOM_CODE_RETURN_2), 4)
+    write_memory(CUSTOM_CODE_ADDRESS_2 + 104, make_b(CUSTOM_CODE_ADDRESS_2 + 104, CUSTOM_CODE_RETURN_2), 4)
+
+    if ctx.slot_data.get("progressive_leveling", 0):
+        #Remove the xp check
+        write_memory(0x800736d0,0x60000000,4)
+        #Remove the standard level up function call
+        write_memory(0x8007d0f8,0x60000000,4)
+
+
+        #Level up trigger
+        # --- PROLOGUE: Save State & Create Frame ---
+        # --- Save State ---
+        write_memory(CUSTOM_LEVEL_UP_CODE, 0x9421FFD0, 4)  # stwu sp, -0x30(sp)
+        write_memory(CUSTOM_LEVEL_UP_CODE + 4, 0x7C0802A6, 4)  # mflr r0
+        write_memory(CUSTOM_LEVEL_UP_CODE + 8, 0x90010024, 4)  # stw r0, 0x0024(sp)
+        write_memory(CUSTOM_LEVEL_UP_CODE + 12, 0x90610008, 4)  # stw r3, 0x0008(sp)
+        write_memory(CUSTOM_LEVEL_UP_CODE + 16, 0x9081000C, 4)  # stw r4, 0x000C(sp)
+
+        # --- Load Desired Level (0x8025D01D) ---
+        write_memory(CUSTOM_LEVEL_UP_CODE + 20, 0x3C608025, 4)  # lis r3, 0x8025
+        write_memory(CUSTOM_LEVEL_UP_CODE + 24, 0x6063D01D, 4)  # ori r3, r3, 0xD01D
+        write_memory(CUSTOM_LEVEL_UP_CODE + 28, 0x88030000, 4)  # lbz r0, 0(r3)
+
+        # --- Load Current Level (0x8025D02C) ---
+        write_memory(CUSTOM_LEVEL_UP_CODE + 32, 0x3C808025, 4)  # lis r4, 0x8025
+        write_memory(CUSTOM_LEVEL_UP_CODE + 36, 0x6084D02C, 4)  # ori r4, r4, 0xD02C
+        write_memory(CUSTOM_LEVEL_UP_CODE + 40, 0x88840000, 4)  # lbz r4, 0(r4)
+
+        # --- Compare and Call ---
+        write_memory(CUSTOM_LEVEL_UP_CODE + 44, 0x7C002040, 4)  # cmplw r0, r4
+        write_memory(CUSTOM_LEVEL_UP_CODE + 48, 0x40810008, 4)  # ble +0x08 (Skip bl if r0 <= r4)
+        write_memory(CUSTOM_LEVEL_UP_CODE + 52, make_bl(CUSTOM_LEVEL_UP_CODE + 52, 0x80073674), 4)
+
+        # --- Cleanup ---
+        write_memory(CUSTOM_LEVEL_UP_CODE + 56, 0x80010024, 4)  # lwz r0, 0x0024(sp)
+        write_memory(CUSTOM_LEVEL_UP_CODE + 60, 0x7C0803A6, 4)  # mtlr r0
+        write_memory(CUSTOM_LEVEL_UP_CODE + 64, 0x80610008, 4)  # lwz r3, 0x0008(sp)
+        write_memory(CUSTOM_LEVEL_UP_CODE + 68, 0x8081000C, 4)  # lwz r4, 0x000C(sp)
+        write_memory(CUSTOM_LEVEL_UP_CODE + 72, 0x38210030, 4)  # addi sp, sp, 0x30
+        write_memory(CUSTOM_LEVEL_UP_CODE + 76, 0x4E800020, 4)  # blr
 
     #setup for level randomization
     if ctx.slot_data.get("randomize_levels", 0):
@@ -593,10 +677,10 @@ def level_modifications(ctx):
         write_memory(0x8025d964,0,1)
     #Ensure that you can always unlock a level by talking to Jarvi's wife.
     elif level_id == lost_kingdoms_2_regions["Kadishu"]["levelID"]:
-        if read_memory(0x802e941e)==55968 and is_in_level():
+        if read_memory(0x802e941e)==55968 and is_in_level() and read_memory(0x8025e151,1) != 0:
             write_memory(0x8025e150, read_memory(0x8025e151,1),1)
             write_memory(0x8025e151,0,1)
-        elif read_memory(0x8025e150,1) != 0:
+        elif (not is_in_level() or read_memory(0x802e941e)!=55968) and read_memory(0x8025e150,1) != 0:
             write_memory(0x8025e151, read_memory(0x8025e150, 1), 1)
             write_memory(0x8025e150, 0, 1)
     #Make it so the guard that opens up Krasheen Mountains always spawns
@@ -625,7 +709,7 @@ def level_modifications(ctx):
     if ((level_id==lost_kingdoms_2_regions["Fossil Boneyard"]["levelID"] and read_memory(0x802e941e) == 55232) or
             (level_id==lost_kingdoms_2_regions["Plains of Rowahl"]["levelID"] and read_memory(0x802e941e) in [55296,55344] and read_memory(0x802250c9)==0) or
             (level_id==lost_kingdoms_2_regions["Holzogh Town"]["levelID"] and read_memory(0x802e941e) == 55264) or
-            level_id==lost_kingdoms_2_regions["Nobleman's Residence"]["levelID"] and read_memory(0x55296) in [55296,55472]):
+            (level_id==lost_kingdoms_2_regions["Nobleman's Residence"]["levelID"] and read_memory(0x802e941e) in [55296,55472] and read_memory(0x8025dc0c,1)!=0)):
         write_memory(0x8006e7c4, 0x8003005c, 4)
     else:
         write_memory(0x8006e7c4, 0x80030004, 4)
@@ -638,8 +722,8 @@ def level_modifications(ctx):
                 write_memory(0x81088290, lost_kingdoms_2_regions[level_ordering["Nobleman's Residence Exit 2"]]["levelID"], 4)
             elif level_id == lost_kingdoms_2_regions["Bhashea High Road"]["levelID"]:
                 # Vanilla: Kendarie Fortress (Exit 2), Kadishu (Exit 1), Bhashea Castle (Exit 3)
-                write_memory(0x8113f89c, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 2"]]["levelID"], 4)
-                write_memory(0x8113fcfc, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 1"]]["levelID"], 4)
+                write_memory(0x8113f89c, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 1"]]["levelID"], 4)
+                write_memory(0x8113fcfc, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 2"]]["levelID"], 4)
                 write_memory(0x8113ff08, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 3"]]["levelID"], 4)
             elif level_id == lost_kingdoms_2_regions["Kadishu"]["levelID"]:
                 # Vanilla: Gromtull Desert (Exit 2), Kadishu Shop (Exit 1)

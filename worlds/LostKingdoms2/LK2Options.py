@@ -37,6 +37,11 @@ class CombosanityConditionOption(Toggle):
     display_name = "Combosanity"
     default = 0
 
+class ProgressiveLevelingOption(Toggle):
+    """Choose whether to have character levels as a progressive item. You will no longer be able to level up normally."""
+    display_name = "Progressive Leveling"
+    default = 0
+
 class OpenWorldConditionOption(Toggle):
     """Choose whether all levels are unlocked from the start."""
     visibility = Visibility.none
@@ -116,3 +121,4 @@ class LostKingdoms2Options(PerGameCommonOptions):
     randomize_bonus_draws : RandomizeBonusDraws
     randomize_magic_stone_costs : RandomizeMagicCosts
     randomize_levels : LevelRandomization
+    progressive_leveling: ProgressiveLevelingOption

@@ -114,6 +114,8 @@ class LostKingdoms2World(World):
             classification = ItemClassification.progression_deprioritized_skip_balancing
         elif self.options.combosanity.value and item in lost_kingdoms_2_cards and lost_kingdoms_2_cards[item]["hasCombo"]:
             classification = ItemClassification.progression_deprioritized_skip_balancing
+        elif item == "Progressive Player Level":
+            classification = ItemClassification.useful
         else:
             classification = ItemClassification.filler
         return LK2Item(item, classification, self.item_name_to_id[item], self.player)
@@ -142,7 +144,7 @@ class LostKingdoms2World(World):
                 lost_kingdoms_2_filler_cards.append(key)
             else:
                 lost_kingdoms_2_progression_cards.append(key)
-        num_of_random_cards = len(lost_kingdoms_2_chests) + (self.options.combosanity.value * len(lost_kingdoms_2_combos)) + (self.options.shopsanity.value * len(lost_kingdoms_2_shop_purchases)) - len(lost_kingdoms_2_progression_cards)
+        num_of_random_cards = len(lost_kingdoms_2_chests) + (self.options.combosanity.value * len(lost_kingdoms_2_combos)) + (self.options.shopsanity.value * len(lost_kingdoms_2_shop_purchases)) - len(lost_kingdoms_2_progression_cards) - 19 * self.options.progressive_leveling.value
         #Ensure there is always enough filler cards by doubling the pool until it's large enough
         while len(lost_kingdoms_2_filler_cards) < num_of_random_cards:
             lost_kingdoms_2_filler_cards *= 2
@@ -155,6 +157,8 @@ class LostKingdoms2World(World):
             if (lost_kingdoms_2_items[key]["Type"] != "Card") | (key in cards_to_include):
                 #Only include Red Fairies if fairysanity is enabled
                 if (lost_kingdoms_2_items[key]["Type"] == "Red Fairy") and (self.options.fairysanity.value != 1):
+                    continue
+                if (lost_kingdoms_2_items[key]["Type"] == "Progressive Player Level") and (self.options.progressive_leveling.value != 1):
                     continue
                 for amount in range(lost_kingdoms_2_items[key]["Amount"]):
                     lk2_item = self.create_item(key)
@@ -633,7 +637,8 @@ class LostKingdoms2World(World):
             "randomize_shop_contents": self.options.randomize_shop_contents.value,
             "randomize_bonus_draws": self.options.randomize_bonus_draws.value,
             "randomize_magic_stone_costs": self.options.randomize_magic_stone_costs.value,
-            "randomize_levels": self.options.randomize_levels.value
+            "randomize_levels": self.options.randomize_levels.value,
+            "progressive_leveling": self.options.progressive_leveling.value,
         }
 
     #This function exists for universal tracker to align the rng
