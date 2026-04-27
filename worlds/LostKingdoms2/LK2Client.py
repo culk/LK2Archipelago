@@ -50,10 +50,6 @@ God_of_Harmony_ID_ADDRESS = 0x80223e5c # = 2164498496
 Emperor_Health_ADDRESS = 0x80223fb8
 Emperor_ID_ADDRESS = 0x80223f6c # = 8153e580
 TEMP_DECK_ADDRESS = 0x80257ada
-CARD_INFO_TABLE_ADDRESS = 0x80732be0
-CARD_SHOP_ADDRESS = 0x80168700
-STARTING_DECK_ADDRESS = 0x80152640
-BONUS_DRAW_ADDRESS = 0x80168168
 COMBO_LOCATION_ADDRESS = 0x8025d070
 KADISHU_SHOP_1_AND_2_ADDRESS = 0x8123cdc0
 KADISHU_SHOP_3_ADDRESS = 0x8124aa60
@@ -87,8 +83,6 @@ ONE_TIME_MODIFIERS_IN_GAME = False
 ONE_TIME_MODIFIERS_MAIN_MENU = False
 HAS_GOALED = False
 PLAYER_PREVIOUS_GOLD = 0
-
-global level_ordering
 
 
 class LK2CommandProcessor(ClientCommandProcessor):
@@ -506,6 +500,7 @@ def modify_code(ctx):
     if ctx.slot_data.get("fairysanity", 0):
         write_memory(0x80077034, 0x38040000, 4)
 
+    write_memory(CUSTOM_CODE_JUMP_1, make_bl(CUSTOM_CODE_JUMP_1, CUSTOM_CODE_ADDRESS_1), 4)
     # 1. Prologue: Create Stack Frame and Save Registers
     # stwu sp, -0x20(sp) -> Decrement SP and save old SP
     write_memory(CUSTOM_CODE_ADDRESS_1, 0x9421FFE0, 4)
@@ -520,7 +515,7 @@ def modify_code(ctx):
     # 2. Logic: Setup and Call ICInvalidateRange
     # lis r3, 0x8006 / ori r3, r3, 0xE7C4
     write_memory(CUSTOM_CODE_ADDRESS_1 + 20, 0x3C608006, 4)
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 24, 0x6063E7C4, 4)
+    write_memory(CUSTOM_CODE_ADDRESS_1 + 24, 0x6063E7C4, 4)
     # li r4, 4
     write_memory(CUSTOM_CODE_ADDRESS_1 + 28, 0x38800004, 4)
     # bl INVALIDATE_ADDRESS
@@ -674,6 +669,12 @@ def modify_code(ctx):
 
     logger.debug("Modified code")
 
+def randomize_levels(ctx):
+    random.seed(ctx.slot_data.get("Seed", -1) + 4)
+    global level_ordering
+    level_ordering = randomize_exits()
+    logger.debug("Level ordering is:" + str(level_ordering))
+
 def level_modifications(ctx):
     item_memory = read_memory(KEY_ITEM_ITEM_ADDRESS, 4)
     level_id = read_memory(LEVEL_ID_ADDRESS, 1)
@@ -786,9 +787,6 @@ def level_modifications(ctx):
         elif (not is_in_level() or read_memory(0x802e941e)!=55968) and read_memory(0x8025e150,1) != 0:
             write_memory(0x8025e151, read_memory(0x8025e150, 1), 1)
             write_memory(0x8025e150, 0, 1)
-    #Make it so the guard that opens up Krasheen Mountains always spawns
-    elif level_id==lost_kingdoms_2_regions["Royal Tower, Lower"]["levelID"]:
-        write_memory(0x8006e7c4,0x38000001,4)
     #Make it so if you beat Bhashea High Road, p2 loads without needing to enter Kadishu
     elif level_id==lost_kingdoms_2_regions["Bhashea High Road"]["levelID"] and ctx.slot_data.get("randomize_levels", 0):
         #If Kadishu hasn't been beaten, then load the first part of it
@@ -812,8 +810,11 @@ def level_modifications(ctx):
     if ((level_id==lost_kingdoms_2_regions["Fossil Boneyard"]["levelID"] and read_memory(0x802e941e) == 55232) or
             (level_id==lost_kingdoms_2_regions["Plains of Rowahl"]["levelID"] and read_memory(0x802e941e) in [55296,55344] and read_memory(0x802250c9)==0) or
             (level_id==lost_kingdoms_2_regions["Holzogh Town"]["levelID"] and read_memory(0x802e941e) == 55264) or
-            (level_id==lost_kingdoms_2_regions["Nobleman's Residence"]["levelID"] and read_memory(0x802e941e) in [55296,55472] and read_memory(0x8025dc0c,1)!=0)):
+            (level_id==lost_kingdoms_2_regions["Nobleman's Residence"]["levelID"] and read_memory(0x802e941e) in [55296,55472,55456,55440,55488] and read_memory(0x8025dc0c,1)!=0)):
         write_memory(0x8006e7c4, 0x8003005c, 4)
+    #Make it so the guard that opens up Krasheen Mountains always spawns
+    elif level_id==lost_kingdoms_2_regions["Royal Tower, Lower"]["levelID"]:
+        write_memory(0x8006e7c4,0x38000001,4)
     else:
         write_memory(0x8006e7c4, 0x80030004, 4)
 
@@ -914,73 +915,6 @@ def open_world():
     for region in lost_kingdoms_2_regions:
         write_memory(int(lost_kingdoms_2_regions[region]["RAMAddress"],16), 128, 1)
 
-#The higher the bias value, the less bias there is. 1 is the minimum
-def get_card_weights(cards, is_weighted: bool, target_cost: int, bias: int = 3) -> list[int]:
-    weights = []
-    for card_name in cards:
-        if is_weighted:
-            weights.append(1 / (abs(lost_kingdoms_2_cards[card_name]["mana_cost"] - target_cost) + bias))
-        else:
-            weights.append(1)
-
-    return weights
-
-def randomize_shop_contents(ctx):
-    random.seed(ctx.slot_data.get("Seed", -1))
-    cards = sorted(list(lost_kingdoms_2_cards.keys()))
-    excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
-    cards = sorted(list(set(cards) - set(excluded_cards)))
-
-    for x in range (32):
-        weights = get_card_weights(cards, ctx.slot_data.get("randomize_shop_contents", 0) == 1, (x//8)*4)
-        card_name = random.choices(cards, weights=weights, k=1)[0]
-        logger.debug("Card set to shop slot " + str(x) + ": " + card_name)
-        write_memory(CARD_SHOP_ADDRESS+x*2,int(lost_kingdoms_2_cards[card_name]["hexCode"],16))
-        cards.remove(card_name)
-
-    #Add custom prices for cards that lack prices
-    for card in lostkingdoms_2_custom_prices:
-        write_memory(CARD_INFO_TABLE_ADDRESS+230+22*16*lost_kingdoms_2_cards[card]["orderInMemory"], lostkingdoms_2_custom_prices[card]["price"])
-
-def randomize_starting_deck(ctx):
-    random.seed(ctx.slot_data.get("Seed", -1)+1)
-    cards = sorted(list(lost_kingdoms_2_cards.keys()))
-    excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
-    cards = sorted(list(set(cards) - set(excluded_cards)))
-
-    for x in range(12):
-        weights = get_card_weights(cards, ctx.slot_data.get("randomize_starting_deck", 0) == 1, 1)
-        card_name = random.choices(cards, weights=weights, k=1)[0]
-        cards.remove(card_name)
-        write_memory(STARTING_DECK_ADDRESS + x * 2,int(lost_kingdoms_2_cards[card_name]["hexCode"],16))
-
-def randomize_bonus_draws(ctx):
-    random.seed(ctx.slot_data.get("Seed", -1)+2)
-    cards = sorted(list(lost_kingdoms_2_cards.keys()))
-    excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
-    cards = sorted(list(set(cards) - set(excluded_cards)))
-    group_dict = {}
-
-    for key in lost_kingdoms_2_bonus_draws:
-        bonus_draw = lost_kingdoms_2_bonus_draws[key]
-        if group_dict.get(bonus_draw["cardGroup"], 0):
-            card_name = group_dict.get(bonus_draw["cardGroup"])
-            write_memory(BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169, int(lost_kingdoms_2_cards[card_name]["hexCode"], 16))
-        else:
-            weights = get_card_weights(cards, ctx.slot_data.get("randomize_bonus_draws", 0) == 1, bonus_draw["cardGroup"]//5)
-            card_name = random.choices(cards, weights=weights, k=1)[0]
-            cards.remove(card_name)
-            write_memory(BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169, int(lost_kingdoms_2_cards[card_name]["hexCode"], 16))
-            group_dict[bonus_draw["cardGroup"]] = card_name
-
-def randomize_magic_stone_costs(ctx):
-    random.seed(ctx.slot_data.get("Seed", -1) + 3)
-    for card_name in sorted(lost_kingdoms_2_cards):
-        new_mana_cost = random.randint(1,15)
-        write_memory(CARD_INFO_TABLE_ADDRESS + 22 * 16 * lost_kingdoms_2_cards[card_name]["orderInMemory"] + 194 + 32, new_mana_cost,  1)
-        lost_kingdoms_2_cards[card_name]["mana_cost"] = new_mana_cost
-        logger.debug("Setting " + str(card_name) + " mana cost to " + str(new_mana_cost))
-
 def has_item(self, name: str) -> bool:
     """Check if player has received an item"""
     try:
@@ -1011,7 +945,7 @@ async def check_victory_conditions(ctx: LK2Context):
                     }])
                     HAS_GOALED = True
             case 2:
-                if read_memory(RED_FAIRY_COUNT_ADDRESS,1) + read_memory(RED_FAIRY_COUNT_ADDRESS+1,1) == ctx.slot_data.get("collect_red_fairies_amount", 50):
+                if read_memory(RED_FAIRY_COUNT_ADDRESS,1) + read_memory(RED_FAIRY_COUNT_ADDRESS+1,1) >= ctx.slot_data.get("collect_red_fairies_amount", 50):
                     await ctx.send_msgs([{
                         "cmd": "StatusUpdate",
                         "status": ClientStatus.CLIENT_GOAL
@@ -1254,19 +1188,12 @@ async def dolphin_sync_task_main_task(ctx: LK2Context):
                     logger.debug("Triggering one time main menu modifiers")
                     #This prevents saves from other playthroughs being loaded.
                     replace_game_id(ctx)
-                    if ctx.slot_data.get("randomize_magic_stone_costs", 0):
-                        randomize_magic_stone_costs(ctx)
-                    if ctx.slot_data.get("randomize_starting_deck", 0):
-                        randomize_starting_deck(ctx)
-                    if ctx.slot_data.get("randomize_shop_contents", 0):
-                        randomize_shop_contents(ctx)
-                    if ctx.slot_data.get("randomize_bonus_draws", 0):
-                        randomize_bonus_draws(ctx)
                     ONE_TIME_MODIFIERS_MAIN_MENU = True
                     ONE_TIME_MODIFIERS_IN_GAME = False
                 if (not ONE_TIME_MODIFIERS_IN_GAME) and ctx.slot_data and check_ingame():
                     logger.debug("Triggering one time in game modifiers")
-                    modify_code(ctx)
+                    #modify_code(ctx)
+                    randomize_levels(ctx)
                     logger.debug("Slot data:" + str(ctx.slot_data))
                     if ctx.slot_data.get("open_world", 0):
                         open_world()
@@ -1339,6 +1266,8 @@ def main(*launch_args: str):
     Utils.init_logging(CLIENT_NAME)
     logger.info(f"Starting LK2 Client {CLIENT_VERSION}")
     dolphin_launcher: DolphinLauncher = DolphinLauncher()
+
+
 
     parser = get_base_parser()
     parser.add_argument('aplk2_file', default="", type=str, nargs="?", help='Path to an APLK2 file')

@@ -383,6 +383,8 @@ class LostKingdoms2World(World):
                     add_rule(location, lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player) and state.has("God of Destruction", self.player))
                 case "Royal Tower, Lower - jump chest 1" | "Royal Tower, Lower - jump chest 2":
                     add_rule(location, lambda state: state.has("Hell Hound", self.player) and state.has("God of Destruction", self.player))
+                case "Alanjeh Castle - chest 2" | "Alanjeh Castle - chest 3" | "Alanjeh Castle - Red Fairy jump":
+                    add_rule(location, lambda state: state.has("Hell Hound", self.player))
                 case "Bhashea Castle - east jump chest" | "Ruldo Forest - jump chest" | "Fossil Boneyard - Red Fairy jumping" | "Fossil Boneyard - chest behind cultist" | "Fossil Boneyard - chest 3"\
                     | "Fossil Boneyard - Red Fairy near booster" | "Fossil Boneyard - chest 4" | "Fossil Boneyard - chest 5" | "Fossil Boneyard - chest 6" | "Fossil Boneyard - chest 7" | "Sarvan - jump chest"\
                     | "Krasheen Mountains - chest 1" | "Krasheen Mountains - chest 2" | "Krasheen Mountains - chest 3"\
@@ -446,23 +448,23 @@ class LostKingdoms2World(World):
                              and state.has("Elise Runestone", self.player) and state.has("Olf Runestone", self.player) \
                              and state.has("Ebin Runestone", self.player) and state.has("Keil Runestone", self.player) \
                              and state.has("Nebeth Runestone", self.player))
-                case "FH - collect 1 fairy":
+                case "Fairy House - collect 1 fairy":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 1))
-                case "FH - collect 10 fairies":
+                case "Fairy House - collect 10 fairies":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 10))
-                case "FH - collect 20 fairies":
+                case "Fairy House - collect 20 fairies":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 20))
-                case "FH - collect 30 fairies":
+                case "Fairy House - collect 30 fairies":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 30))
-                case "FH - collect 50 fairies":
+                case "Fairy House - collect 50 fairies":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 50))
-                case "FH - collect 70 fairies":
+                case "Fairy House - collect 70 fairies":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 70))
-                case "FH - collect 80 fairies":
+                case "Fairy House - collect 80 fairies":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 80))
-                case "FH - collect 90 fairies":
+                case "Fairy House - collect 90 fairies":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 90))
-                case "FH - collect 100 fairies":
+                case "Fairy House - collect 100 fairies":
                     add_rule(location, lambda state: state.has("Red Fairy", self.player, 100))
                 case "Fossil Boneyard - zombie dragon chest":
                     add_rule(location, lambda state: state.has("Fossil Head", self.player) and state.has("Fossil Torso", self.player) \
@@ -504,8 +506,8 @@ class LostKingdoms2World(World):
                     add_rule(location, lambda state: state.has("Juggernaut", self.player))
                     add_rule(location, lambda state: state.has("Whip Worm", self.player))
                 case "Combo - Crystal Rage":
-                    add_rule(location, lambda state: state.has("Dragon Knight", self.player))
-                    add_rule(location, lambda state: state.has("Crystal Rose", self.player)) #2
+                    add_rule(location, lambda state: state.has("Dragon Knight", self.player)) #2
+                    add_rule(location, lambda state: state.has("Crystal Rose", self.player))
                     add_rule(location, lambda state: state.can_reach_region("Kadishu Shop", self.player) or state.can_reach_region("Grenfoel Cathedral Shop", self.player))
                 case "Combo - Mandragora Mixer":
                     add_rule(location, lambda state: state.has("Mandragora", self.player))
@@ -519,6 +521,7 @@ class LostKingdoms2World(World):
                     add_rule(location, lambda state: state.has("Tiger Mage", self.player))
                 case "Combo - Just Visiting":
                     add_rule(location, lambda state: state.has("Doppelganger", self.player)) #2
+                    add_rule(location, lambda state: state.has("God of Destruction", self.player))
                     add_rule(location, lambda state: state.can_reach_region("Kadishu Shop", self.player) or state.can_reach_region("Grenfoel Cathedral Shop", self.player))
                 case "Combo - Djinn and Bear It":
                     add_rule(location, lambda state: state.has("Efreet", self.player))
@@ -685,7 +688,21 @@ class LostKingdoms2World(World):
             "Seed": self.multiworld.seed,
             "Slot": self.player,
             "Name": self.player_name,
-            #"Locations":{},
+            "win_condition": self.options.win_condition.value,
+            "collect_red_fairies_amount": self.options.collect_red_fairies_amount.value,
+            "fairysanity": self.options.fairysanity.value,
+            "shopsanity": self.options.shopsanity.value,
+            "combosanity": self.options.combosanity.value,
+            "open_world": self.options.open_world.value,
+            "exclude_sacred_battle_arena_checks": self.options.exclude_sacred_battle_arena_checks.value,
+            "death_link": self.options.death_link.value,
+            "randomize_starting_deck": self.options.randomize_starting_deck.value,
+            "randomize_shop_contents": self.options.randomize_shop_contents.value,
+            "randomize_bonus_draws": self.options.randomize_bonus_draws.value,
+            "randomize_magic_stone_costs": self.options.randomize_magic_stone_costs.value,
+            "randomize_levels": self.options.randomize_levels.value,
+            "progressive_leveling": self.options.progressive_leveling.value,
+            "progressive_attribute_proficiencies":self.options.progressive_attribute_proficiencies.value,
             AP_WORLD_VERSION_NAME: CLIENT_VERSION
         }
 
