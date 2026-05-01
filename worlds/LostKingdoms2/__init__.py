@@ -233,7 +233,7 @@ class LostKingdoms2World(World):
 
         exit_rules = {
                 "Nobleman's Residence Exit 2": lambda state: state.has("Mysterious Key", self.player),
-                "Bhashea High Road Exit 3": lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player),
+                "Bhashea High Road Exit 3": lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player) or state.has_any(lost_kingdoms_2_jumping_cards, self.player),
                 "Gromtull Desert Exit 1": lambda state: state.has("Black Liquid", self.player),
                 "Kendarie Fortress Exit 1": lambda state: state.has("Red Key", self.player) and state.has("Blue Key",self.player),
                 "Runestone Caverns - Upper Chambers Exit 1": lambda state: state.has("Stone Golem", self.player),
