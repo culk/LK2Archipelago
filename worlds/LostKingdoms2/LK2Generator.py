@@ -7,7 +7,6 @@ from random import Random
 import Utils
 
 from worlds.LostKingdoms2 import *
-from worlds.LostKingdoms2.iso_helper.DOL_Updater import update_dol_offsets
 
 from .client.constants import CLIENT_VERSION, AP_WORLD_VERSION_NAME
 import logging
@@ -317,8 +316,7 @@ class LK2Randomizer:
     def randomize_bonus_draws(self, iso_file):
         random.seed(self.output_data.get("Seed", -1) + 2)
         cards = sorted(list(lost_kingdoms_2_cards.keys()))
-        excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + [
-            "Stone Golem"]
+        excluded_cards = lost_kingdoms_2_flying_cards + lost_kingdoms_2_jumping_cards + ["God of Destruction"] + ["Stone Golem"]
         cards = sorted(list(set(cards) - set(excluded_cards)))
         group_dict = {}
 
@@ -329,8 +327,7 @@ class LK2Randomizer:
                 self.patch_iso_from_ram(iso_file, BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169,
                                         int(lost_kingdoms_2_cards[card_name]["hexCode"], 16), 2)
             else:
-                weights = self.get_card_weights(cards, self.output_data.get("randomize_bonus_draws", 0) == 1,
-                                           bonus_draw["cardGroup"] // 5)
+                weights = self.get_card_weights(cards, self.output_data.get("randomize_bonus_draws", 0) == 1,bonus_draw["cardGroup"] // 5)
                 card_name = random.choices(cards, weights=weights, k=1)[0]
                 cards.remove(card_name)
                 self.patch_iso_from_ram(iso_file, BONUS_DRAW_ADDRESS + int(bonus_draw["address"], 16) - 0x183169,

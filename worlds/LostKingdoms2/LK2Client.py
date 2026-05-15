@@ -6,6 +6,7 @@ import sys
 import time
 import traceback
 from typing import TYPE_CHECKING, Any, Optional
+from unittest import case
 
 import dolphin_memory_engine
 
@@ -47,8 +48,9 @@ ITEM_INDEX_ADDRESS = 0x8025d016
 Valkyrie_Ashura_ADDRESS = 0x8025e28c
 God_of_Harmony_Health_ADDRESS = 0x80223eb8
 God_of_Harmony_ID_ADDRESS = 0x80223e5c # = 2164498496
-Emperor_Health_ADDRESS = 0x80223fb8
+Emperor_Health_ADDRESS = 0x80223fc8
 Emperor_ID_ADDRESS = 0x80223f6c # = 8153e580
+Emperor_Status = 0
 TEMP_DECK_ADDRESS = 0x80257ada
 COMBO_LOCATION_ADDRESS = 0x8025d070
 KADISHU_SHOP_1_AND_2_ADDRESS = 0x8123cdc0
@@ -355,6 +357,10 @@ def give_card(ctx,card_name: str) -> bool:
             memory_address = int(lost_kingdoms_2_cards[card_name]["DolphinAddress"], 16)
             current_amount_of_item = read_memory(memory_address)
             write_memory(memory_address, current_amount_of_item + 1)
+
+            #Update the catalogue
+            if read_memory(memory_address+6) == 0:
+                write_memory(memory_address+6, 3)
         else:
             #add card to player's available cards at a deck point
             offset = 0
@@ -704,22 +710,22 @@ def level_modifications(ctx):
     #Let swords be placed in Bhashea Castle
     elif level_id == lost_kingdoms_2_regions["Bhashea Castle"]["levelID"]:
         #Blade of Skill placement
-        if (item_memory >> 15) & 1:
+        if (item_memory >> 16) & 1:
             write_memory(0x8025d917, 0, 1)
         else:
             write_memory(0x8025d917, 1, 1)
         #Blade of Power placement
-        if (item_memory >> 16) & 1:
+        if (item_memory >> 17) & 1:
             write_memory(0x8025d927, 0, 1)
         else:
             write_memory(0x8025d927, 1, 1)
         #Blade of Wisdom placement
-        if (item_memory >> 17) & 1:
+        if (item_memory >> 18) & 1:
             write_memory(0x8025d937, 0, 1)
         else:
             write_memory(0x8025d937, 1, 1)
         #Blade of Time placement
-        if (item_memory >> 18) & 1:
+        if (item_memory >> 19) & 1:
             write_memory(0x8025d947, 0, 1)
         else:
             write_memory(0x8025d947, 1, 1)
@@ -938,7 +944,7 @@ async def check_victory_conditions(ctx: LK2Context):
                     }])
                     HAS_GOALED = True
             case 1:
-                if read_memory(Emperor_Health_ADDRESS) == 0 and read_memory(Emperor_ID_ADDRESS,4) == 2169759104:
+                if read_memory(Emperor_Health_ADDRESS) == 0 and read_memory(Emperor_ID_ADDRESS,4) == 2169768032:
                     await ctx.send_msgs([{
                         "cmd": "StatusUpdate",
                         "status": ClientStatus.CLIENT_GOAL
@@ -1021,37 +1027,135 @@ def check_regular_location(ctx: LK2Context, location: str) -> bool:
     :param ctx: Lost Kingdoms 2 client context.
     :raises NotImplementedError: If a location with an unknown type is provided.
     """
-    match lost_kingdoms_2_locations[location]["type"]:
-        case "Chest" | "Red Fairy" | "Magic Boosters":
-            if lost_kingdoms_2_locations[location]["RAMAddress"]!="":
-                if (location == "Temple of Sharacia - help valkyrie") | (location == "Temple of Sharacia - help ashura"):
-                    if read_memory(Valkyrie_Ashura_ADDRESS) != 256:
+
+    level_name = lost_kingdoms_2_locations[location].get("level")
+    if level_name == "Menu" or lost_kingdoms_2_regions[level_name]["levelID"] == read_memory(LEVEL_ID_ADDRESS, 1):
+        match lost_kingdoms_2_locations[location]["type"]:
+            case "Chest" | "Red Fairy" | "Magic Boosters":
+                if lost_kingdoms_2_locations[location]["RAMAddress"]!="":
+                    if (location == "Temple of Sharacia - help valkyrie") | (location == "Temple of Sharacia - help ashura"):
+                        if read_memory(Valkyrie_Ashura_ADDRESS) != 256:
+                            return False
+                    elif "Fairy House - collect" in location:
+                        memory_value = read_memory(int(lost_kingdoms_2_locations[location]["RAMAddress"], 16),1)
+                        return memory_value >= lost_kingdoms_2_locations[location]["bitOffset"]
+                    memory_value = read_memory(int(lost_kingdoms_2_locations[location]["RAMAddress"], 16))
+                    if lost_kingdoms_2_locations[location]["bitOffset"] >= 0:
+                        bit_value = (memory_value & (1 << lost_kingdoms_2_locations[location]["bitOffset"]))
+                        return bit_value != 0
+                    else:
                         return False
-                elif "Fairy House - collect" in location:
-                    memory_value = read_memory(int(lost_kingdoms_2_locations[location]["RAMAddress"], 16),1)
-                    return memory_value >= lost_kingdoms_2_locations[location]["bitOffset"]
-                memory_value = read_memory(int(lost_kingdoms_2_locations[location]["RAMAddress"], 16))
-                if lost_kingdoms_2_locations[location]["bitOffset"] >= 0:
-                    bit_value = (memory_value & (1 << lost_kingdoms_2_locations[location]["bitOffset"]))
-                    return bit_value != 0
                 else:
                     return False
-            else:
+            case "Key Item":
+                memory_value = read_memory(KEY_ITEM_LOCATION_ADDRESS,4)
+                bit_value = (memory_value & (1 << lost_kingdoms_2_locations[location]["bitOffset"]))
+                return bit_value
+            case "Combo":
+                memory_value = read_memory(COMBO_LOCATION_ADDRESS, 8)
+                bit_value = (memory_value >> lost_kingdoms_2_combos[location]["bitOffset"]) & 1
+                return bit_value
+            case "Enemysanity":
+                if is_in_level():
+                    return check_enemy_death(location)
                 return False
-        case "Key Item":
-            memory_value = read_memory(KEY_ITEM_LOCATION_ADDRESS,4)
-            bit_value = (memory_value & (1 << lost_kingdoms_2_locations[location]["bitOffset"]))
-            return bit_value
-        case "Combo":
-            memory_value = read_memory(COMBO_LOCATION_ADDRESS, 8)
-            bit_value = (memory_value >> lost_kingdoms_2_combos[location]["bitOffset"]) & 1
-            return bit_value
-        case "Shop Purchase":
-            memory_value = read_memory(SHOP_LOCATION_ADDRESS, 5)
-            bit_value = (memory_value >> lost_kingdoms_2_shop_purchases[location]["bitOffset"]) & 1
-            return bit_value
+            case "Shop Purchase":
+                memory_value = read_memory(SHOP_LOCATION_ADDRESS, 5)
+                bit_value = (memory_value >> lost_kingdoms_2_shop_purchases[location]["bitOffset"]) & 1
+                return bit_value
+
+        return False
+    else:
+        return False
+
+def check_enemy_death(location: str) -> bool:
+    # Helper to get all enemies in the same group for the current level
+    def get_group_members(target_location):
+        group_id = target_location["group"]
+        level_id = target_location["level"]
+        return [
+            loc_name for loc_name, data in lost_kingdoms_2_locations.items()
+            if data.get("group") == group_id and data.get("level") == level_id
+        ]
+
+    # Revised check logic
+    current_loc_data = lost_kingdoms_2_locations[location]
+    target_species = location.split(" - ")[-1].split(" #")[0]
+
+    # If already sent, skip
+    if current_loc_data["currentState"] == 2:
+        return False
+
+    # Identify the "Pool" of addresses for this group
+    group_member_names = get_group_members(current_loc_data)
+    group_addresses = [lost_kingdoms_2_locations[name]["RAMAddress"] for name in group_member_names]
+
+    # STATE 0: Waiting for a valid, ACTIVE spawn
+    if current_loc_data["currentState"] == 0:
+        for addr in group_addresses:
+            # Check 1: Is the memory slot actually active (set to 1)?
+            is_alive = read_memory(int(addr, 16), 1) == 1
+
+            if is_alive:
+                # Check 2: Does the species in this active slot match our target?
+                if get_enemy_species(addr) == target_species:
+                    # Record which specific address this location is currently 'using'
+                    current_loc_data["active_addr"] = addr
+                    current_loc_data["currentState"] = 1
+                    break
+
+    # 2. Check for Death (currentState 2)
+    elif current_loc_data["currentState"] == 1:
+        target_species = location.split(" - ")[-1].split(" #")[0]
+
+        # Count how many locations of this species in this group are already "Done" (State 2)
+        already_killed_count = sum(
+            1 for name in group_member_names
+            if name.startswith(location.rsplit(" #", 1)[0]) and lost_kingdoms_2_locations[name]["currentState"] == 2
+        )
+
+        # Count how many slots in RAM are currently dead and match our species
+        current_dead_in_ram = 0
+        for addr in group_addresses:
+            # Check your death flag logic: read_memory(...) == 0
+            is_dead = read_memory(int(addr, 16), 1) == 0 and read_memory(int(addr, 16) + 0x10, 2) == 0
+
+            if is_dead:
+                # Use your species helper to see what was in this slot
+                if get_enemy_species(addr) == target_species:
+                    current_dead_in_ram += 1
+
+        # If there are more dead ravens in RAM than we have already "checked off" in AP,
+        # then THIS specific location (e.g., Raven #2) is the one that just died.
+        if current_dead_in_ram > already_killed_count:
+            current_loc_data["currentState"] = 2
+            return True
 
     return False
+
+def get_enemy_species(RAMAddress: str) -> str:
+    hex_code_of_enemy = read_memory(read_memory(int(RAMAddress, 16) - 0x54,4)+0x8,2)
+    match hex_code_of_enemy:
+        case 0x0:
+            return ""
+        case 0x00f2:
+            return "Tentacle"
+        case 0x00f1:
+            return "God of Harmony"
+        case 0x00fd:
+            return "Leod VIII"
+        case 0x00f0:
+            return "Body of the God"
+        case 0x0120:
+            return "Kendarie Soldier"
+
+    for card in lost_kingdoms_2_cards:
+        if hex_code_of_enemy == int(lost_kingdoms_2_cards[card]["hexCode"].lower(), 16):
+            return str(card)
+
+    logger.debug("Missing species " + str(hex_code_of_enemy))
+    return ""
+
 
 async def check_locations(ctx: LK2Context) -> set[int]:
     """

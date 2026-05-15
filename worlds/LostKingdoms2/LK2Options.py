@@ -37,6 +37,13 @@ class CombosanityConditionOption(Toggle):
     display_name = "Combosanity"
     default = 0
 
+class EnemysanityConditionOption(Toggle):
+    """Choose whether to make every single unique enemy kill is a check.
+    Be warned that spawn triggers in this game are very unintuitive, hidden, and
+    once a level is beaten it will have new enemy spawns. Please report any issue you encounter."""
+    display_name = "Enemysanity"
+    default = 0
+
 class ProgressiveLevelingOption(Toggle):
     """Choose whether to have character levels as a progressive item. You will no longer be able to level up normally."""
     display_name = "Progressive Leveling"
@@ -118,6 +125,7 @@ class LostKingdoms2Options(PerGameCommonOptions):
     fairysanity : FairysanityConditionOption
     shopsanity: ShopsanityConditionOption
     combosanity: CombosanityConditionOption
+    enemysanity: EnemysanityConditionOption
     open_world : OpenWorldConditionOption
     exclude_sacred_battle_arena_checks: ExcludeSacredBattleArenaChecksOption
     death_link: DeathLink

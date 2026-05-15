@@ -138,33 +138,38 @@ class LostKingdoms2World(World):
         #ensure GoD, stone golem, and all flyers/jumpers are in the pool
         lost_kingdoms_2_filler_cards = []
         lost_kingdoms_2_progression_cards = []
+        multiplier = 1
         for key in lost_kingdoms_2_cards:
             lk2_item = self.create_item(key)
             if lk2_item.classification == ItemClassification.filler:
+                lost_kingdoms_2_items[key]["Amount"] = 0
                 lost_kingdoms_2_filler_cards.append(key)
             else:
                 lost_kingdoms_2_progression_cards.append(key)
-        num_of_random_cards = len(lost_kingdoms_2_chests) + (self.options.combosanity.value * len(lost_kingdoms_2_combos)) + (self.options.shopsanity.value * len(lost_kingdoms_2_shop_purchases)) - len(lost_kingdoms_2_progression_cards) - 19 * self.options.progressive_leveling.value - 34 * self.options.progressive_attribute_proficiencies.value
+        num_of_random_cards = len(lost_kingdoms_2_chests) + (self.options.combosanity.value * len(lost_kingdoms_2_combos)) + (self.options.shopsanity.value * len(lost_kingdoms_2_shop_purchases)) - len(lost_kingdoms_2_progression_cards) - 19 * self.options.progressive_leveling.value - 34 * self.options.progressive_attribute_proficiencies.value + (self.options.enemysanity.value * len(lost_kingdoms_2_enemies))
         #Ensure there is always enough filler cards by doubling the pool until it's large enough
-        while len(lost_kingdoms_2_filler_cards) < num_of_random_cards:
-            lost_kingdoms_2_filler_cards *= 2
-        random_cards = random.sample(lost_kingdoms_2_filler_cards, num_of_random_cards)
-        cards_to_include = lost_kingdoms_2_progression_cards + random_cards
+        while len(lost_kingdoms_2_filler_cards)*multiplier < num_of_random_cards:
+            for key in lost_kingdoms_2_filler_cards:
+                lost_kingdoms_2_items[key]["Amount"] += 1
+            multiplier+=1
+        random_cards = random.sample(lost_kingdoms_2_filler_cards, num_of_random_cards-len(lost_kingdoms_2_filler_cards)*(multiplier-1))
+        for key in random_cards:
+            lost_kingdoms_2_items[key]["Amount"] += 1
+
 
         for key in lost_kingdoms_2_items:
             #Only include the randomly selected cards from random_cards.
             #This is because there are more cards than locations available.
-            if (lost_kingdoms_2_items[key]["Type"] != "Card") | (key in cards_to_include):
-                #Only include Red Fairies if fairysanity is enabled
-                if (lost_kingdoms_2_items[key]["Type"] == "Red Fairy") and (self.options.fairysanity.value != 1):
-                    continue
-                if (lost_kingdoms_2_items[key]["Type"] == "Progressive Player Level") and (self.options.progressive_leveling.value != 1):
-                    continue
-                if (lost_kingdoms_2_items[key]["Type"] == "Progressive Attribute Proficiency") and (self.options.progressive_attribute_proficiencies.value != 1):
-                    continue
-                for amount in range(lost_kingdoms_2_items[key]["Amount"]):
-                    lk2_item = self.create_item(key)
-                    self.multiworld.itempool.append(lk2_item)
+            #Only include Red Fairies if fairysanity is enabled
+            if (lost_kingdoms_2_items[key]["Type"] == "Red Fairy") and (self.options.fairysanity.value != 1):
+                continue
+            if (lost_kingdoms_2_items[key]["Type"] == "Progressive Player Level") and (self.options.progressive_leveling.value != 1):
+                continue
+            if (lost_kingdoms_2_items[key]["Type"] == "Progressive Attribute Proficiency") and (self.options.progressive_attribute_proficiencies.value != 1):
+                continue
+            for amount in range(lost_kingdoms_2_items[key]["Amount"]):
+                lk2_item = self.create_item(key)
+                self.multiworld.itempool.append(lk2_item)
 
         # itempool and number of locations should match up.
         # If this is not the case we want to fill the itempool with junk.
@@ -208,6 +213,8 @@ class LostKingdoms2World(World):
             if lost_kingdoms_2_locations[key]["type"] == "Bonus Draw":
                 continue
             if lost_kingdoms_2_locations[key]["type"] == "Shop Purchase" and self.options.shopsanity.value==0:
+                continue
+            if lost_kingdoms_2_locations[key]["type"] == "Enemysanity" and self.options.enemysanity.value==0:
                 continue
             region = self.multiworld.get_region(lost_kingdoms_2_locations[key]["level"], self.player)
             location_data = LK2LocationData(self.location_name_to_id[key])
@@ -364,114 +371,20 @@ class LostKingdoms2World(World):
                     previous_region = self.multiworld.get_region("Royal Tower, Upper", self.player)
                     previous_region.connect(region, f"{region.name}")
 
-
         for location in self.multiworld.get_locations(self.player):
-            match location.name :
-                case "Bhashea High Road - jump/flight chest" | "Runestone Caverns:Upper Chambers - dragon chest 1" | "Runestone Caverns:Upper Chambers - dragon chest 2" | "Ruldo Forest - flight/jump chest"\
-                    | "Runestone Caverns:Upper Chambers - Red Fairy near dragon":
-                    add_rule(location,lambda state: state.has_any(lost_kingdoms_2_jumping_cards, self.player) or state.has_any(lost_kingdoms_2_flying_cards, self.player))
-                case "Bhashea High Road - flight chest" | "Gromtull Desert - flight chest" | "Kendarie Fortress - flight chest" | "Runestone Caverns:Lower Chambers - high water chest flight"\
-                    | "Plains of Rowahl - flight chest" | "Plains of Rowahl - flight chest 2" | "Alanjeh Castle - flight chest"\
-                    | "Krasheen Mountains - black dragon's card" | "Temple of Sharacia - flight chest"\
-                    | "Obenoix Gorge - flight chest 1" | "Obenoix Gorge - flight chest 2" | "Obenoix Gorge - flight chest 3" | "Bhashea High Road - Red Fairy across bridge"\
-                    | "Kendarie Fortress - Red Fairy fly across" | "Krasheen Mountains - Red Fairy cave 1" | "Krasheen Mountains - Red Fairy broken bridge 1"\
-                    | "Krasheen Mountains - Red Fairy broken bridge 2":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_flying_cards,self.player))
-                case "Runestone Caverns:Lower Chambers - low water chest" | "Runestone Caverns:Lower Chambers - Red Fairy low water":
-                    add_rule(location, lambda state: state.can_reach_region("Runestone Caverns - Upper Chambers", self.player))
-                case "Royal Tower, Lower - flight chest 1" | "Royal Tower, Lower - flight chest 2" | "Royal Tower, Lower - Red Fairy flight":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player) and state.has("God of Destruction", self.player))
-                case "Royal Tower, Lower - jump chest 1" | "Royal Tower, Lower - jump chest 2":
-                    add_rule(location, lambda state: state.has("Hell Hound", self.player) and state.has("God of Destruction", self.player))
-                case "Alanjeh Castle - chest 2" | "Alanjeh Castle - chest 3" | "Alanjeh Castle - Red Fairy jump":
-                    add_rule(location, lambda state: state.has("Hell Hound", self.player))
-                case "Bhashea Castle - east jump chest" | "Ruldo Forest - jump chest" | "Fossil Boneyard - Red Fairy jumping" | "Fossil Boneyard - chest behind cultist" | "Fossil Boneyard - chest 3"\
-                    | "Fossil Boneyard - Red Fairy near booster" | "Fossil Boneyard - chest 4" | "Fossil Boneyard - chest 5" | "Fossil Boneyard - chest 6" | "Fossil Boneyard - chest 7" | "Sarvan - jump chest"\
-                    | "Krasheen Mountains - chest 1" | "Krasheen Mountains - chest 2" | "Krasheen Mountains - chest 3"\
-                    | "Krasheen Mountains - chest 4" | "Krasheen Mountains - chest 5" | "Krasheen Mountains - chest 6" | "Alanjeh Castle - Red Fairy jump"\
-                    | "Fossil Boneyard - Fossil Head Pickup" | "Fossil Boneyard - Fossil Tail Pickup" | "Fossil Boneyard - Fossil Rt Wing Pickup" | "Fossil Boneyard - Fossil Lt Wing Pickup" | "Fossil Boneyard - Fossil Rt Arm Pickup"\
-                    | "Fossil Boneyard - Fossil Lt Arm Pickup" | "Fossil Boneyard - Fossil Lt Leg Pickup" | "Fossil Boneyard - Stranger":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_jumping_cards, self.player) and state.has("Magic Boosters", self.player))
-                case "Fossil Boneyard - Red Fairy near up ledges"  | "Fossil Boneyard - Fossil Torso":
-                    add_rule(location, lambda state: state.has("Hell Hound", self.player) and state.has("Magic Boosters", self.player))
-                case "Gromtull Desert - Red Fairy jump":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_jumping_cards, self.player))
-                case "Gromtull Desert - Stranger":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_jumping_cards, self.player))
-                    add_rule(location, lambda state: state.has("Black Liquid", self.player))
-                case "Bhashea Castle - east jump chest" | "Runestone Caverns:Upper Chambers - chest behind ice 1" | "Runestone Caverns:Upper Chambers - chest behind ice 2" | "Royal Tower, Middle - breakable wall chest 1"\
-                    | "Royal Tower, Middle - breakable wall chest 2" | "Obenoix Gorge - chest behind ice" | "Bhashea Castle - Red Fairy wall break rubble" \
-                    | "Royal Tower, Middle - Red Fairy breakable wall 1" | "Royal Tower, Middle - Red Fairy breakable wall 2":
-                    add_rule(location, lambda state: state.has("Stone Golem", self.player) and state.has("Magic Boosters", self.player))
-                case "Fossil Boneyard - flight chest 1" | "Fossil Boneyard - flight chest 2":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_jumping_cards, self.player) and state.has("Magic Boosters", self.player) and state.has_any(lost_kingdoms_2_flying_cards, self.player))
-                case "Sacred Battle Arena 2 - defeat Leod" | "Sacred Battle Arena 2 - defeat Thalnos" | "Sacred Battle Arena 2 - defeat Katia" | "Sacred Battle Arena 2 - Red Fairy Queen Katia":
-                    add_rule(location, lambda state: state.can_reach_region("Royal Tower, Upper", self.player))
-                case "Kadishu - garbage collection 2":
-                    add_rule(location, lambda state: state.can_reach_region("Ruldo Forest", self.player))
-                case "Kadishu - garbage collection 3":
-                    add_rule(location, lambda state: state.can_reach_region("Royal Tower, Lower", self.player))
-                case "Sarvan - caged chest":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player))
-                    location.progress_type = LocationProgressType.EXCLUDED
-                case "Sarvan - caged chest 2":
-                    location.progress_type = LocationProgressType.EXCLUDED
-                case "Holzogh Town - fountain card":
-                    add_rule(location, lambda state: state.has("Key to Fountain", self.player))
-                case "Plains of Rowahl - chest 6" | "Plains of Rowahl - chest 7" | "Plains of Rowahl - GoD card":
-                    add_rule(location, lambda state: state.has("Jewel of Alanjeh", self.player) and state.has("Castle Gate Key", self.player))
-                case "Temple of Sharacia - help valkyrie" | "Temple of Sharacia - help ashura" | "Runestone Caverns:Upper Chambers - talk to Sol":
-                    location.progress_type = LocationProgressType.EXCLUDED
-                case "Nobleman's Residence - Red Fairy sculpture" | "Nobleman's Residence - Red Fairy central" | "Nobleman's Residence - Red Fairy office" | "Nobleman's Residence - Stranger":
-                    add_rule(location, lambda state: state.has("Mysterious Key", self.player))
-                case "Bhashea High Road - Red Fairy across bridge in rubble" | "Bhashea High Road - Red Fairy chaos knight":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player))
-                case "Kendarie Fortress - Red Fairy past blue gate" | "Kendarie Fortress - Red Fairy near Mechapult":
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player) or state.has("Blue Key", self.player))
-                case "Plains of Rowahl - Red Fairy past gate" | "Plains of Rowahl - chest 4" | "Plains of Rowahl - chest 5" | "Plains of Rowahl - Stranger":
-                    add_rule(location, lambda state: state.has("Castle Gate Key", self.player))
-                case "Kendarie Fortress - Kendarie Soldier 2" | "Kendarie Fortress - chest 2":
-                    add_rule(location, lambda state: state.has("Blue Key", self.player))
-                case "Kendarie Fortress - chest behind green door":
-                    add_rule(location, lambda state: state.has("Green Key", self.player))
-                    add_rule(location, lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player) or state.has("Blue Key",self.player))
-                case "Kendarie Fortress - chest 4" | "Kendarie Fortress - chest 5":
-                    add_rule(location,lambda state: state.has("Blue Key", self.player) and state.has("Red Key", self.player))
-                case "Kendarie Fortress - Kendarie Soldier 3":
-                    add_rule(location, lambda state: state.has("Red Key", self.player))
-                case "Gromtull Desert - Black Liquid":
-                    add_rule(location, lambda state: state.has("Bottle", self.player))
-                case "Gromtull Desert - Red Fairy Jarvi 1" | "Gromtull Desert - Red Fairy Jarvi 2" | "Gromtull Desert - jarvi cave chest 1" | "Gromtull Desert - jarvi cave chest 2":
-                    add_rule(location, lambda state: state.has("Black Liquid", self.player))
-                case "Stone of Sealing":
-                    add_rule(location, lambda state: state.has("Eno Runestone", self.player) and state.has("Oht Runestone", self.player) \
-                             and state.has("Elise Runestone", self.player) and state.has("Olf Runestone", self.player) \
-                             and state.has("Ebin Runestone", self.player) and state.has("Keil Runestone", self.player) \
-                             and state.has("Nebeth Runestone", self.player))
-                case "Fairy House - collect 1 fairy":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 1))
-                case "Fairy House - collect 10 fairies":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 10))
-                case "Fairy House - collect 20 fairies":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 20))
-                case "Fairy House - collect 30 fairies":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 30))
-                case "Fairy House - collect 50 fairies":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 50))
-                case "Fairy House - collect 70 fairies":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 70))
-                case "Fairy House - collect 80 fairies":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 80))
-                case "Fairy House - collect 90 fairies":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 90))
-                case "Fairy House - collect 100 fairies":
-                    add_rule(location, lambda state: state.has("Red Fairy", self.player, 100))
-                case "Fossil Boneyard - zombie dragon chest":
-                    add_rule(location, lambda state: state.has("Fossil Head", self.player) and state.has("Fossil Torso", self.player) \
-                             and state.has("Fossil Tail", self.player) and state.has("Fossil Rt Wing", self.player) \
-                             and state.has("Fossil Lt Wing", self.player) and state.has("Fossil Rt Arm", self.player) \
-                             and state.has("Fossil Lt Arm", self.player) and state.has("Fossil Rt Leg", self.player) \
-                             and state.has("Fossil Lt Leg", self.player))
+            if location.name in lost_kingdoms_2_locations:
+                rule_key = lost_kingdoms_2_locations[location.name].get("rule")
+                if rule_key in lost_kingdoms_2_logic:
+                    logic_func = lost_kingdoms_2_logic[rule_key]
+
+                    # Use 'l_func=logic_func' to capture the current function in the local scope
+                    add_rule(location, lambda state, l_func=logic_func: l_func(state, self.player))
+
+            # Specific option override for Sacred Battle Arena
+            if self.options.exclude_sacred_battle_arena_checks.value and "Sacred Battle Arena" in location.name:
+                location.progress_type = LocationProgressType.EXCLUDED
+
+            match location.name:
                 case "Combo - Triple Hagan":
                     add_rule(location, lambda state: state.has("Rock Hagan", self.player))
                     add_rule(location, lambda state: state.has("Bum Hagan", self.player))
@@ -620,9 +533,6 @@ class LostKingdoms2World(World):
                     add_rule(location, lambda state: state.has("Elf Lord", self.player))
                     add_rule(location, lambda state: state.has("Dark Elf", self.player))
 
-            if self.options.exclude_sacred_battle_arena_checks.value and "Sacred Battle Arena" in location.name:
-                location.progress_type = LocationProgressType.EXCLUDED
-
     def fill_slot_data(self) -> dict:
         #self.debug_regions()
         #self.debug_all_locations()
@@ -635,6 +545,7 @@ class LostKingdoms2World(World):
             "fairysanity": self.options.fairysanity.value,
             "shopsanity": self.options.shopsanity.value,
             "combosanity": self.options.combosanity.value,
+            "enemysanity": self.options.enemysanity.value,
             "open_world": self.options.open_world.value,
             "exclude_sacred_battle_arena_checks": self.options.exclude_sacred_battle_arena_checks.value,
             "death_link": self.options.death_link.value,
@@ -693,6 +604,7 @@ class LostKingdoms2World(World):
             "fairysanity": self.options.fairysanity.value,
             "shopsanity": self.options.shopsanity.value,
             "combosanity": self.options.combosanity.value,
+            "enemysanity": self.options.enemysanity.value,
             "open_world": self.options.open_world.value,
             "exclude_sacred_battle_arena_checks": self.options.exclude_sacred_battle_arena_checks.value,
             "death_link": self.options.death_link.value,
@@ -813,3 +725,67 @@ def randomize_exits(start_region: str = "Nobleman's Residence") -> dict:
 
     logger.info("Level Randomization Complete.")
     return result
+
+lost_kingdoms_2_logic = {
+    # Movement Logic
+    "jump_or_flight": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) or state.has_any(
+        lost_kingdoms_2_flying_cards, p),
+    "flight_only": lambda state, p: state.has_any(lost_kingdoms_2_flying_cards, p),
+    "jumping_only": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p),
+    "jump_and_boosters": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has(
+        "Magic Boosters", p),
+    "jump_boost_flight": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has(
+        "Magic Boosters", p) and state.has_any(lost_kingdoms_2_flying_cards, p),
+
+    # Region/Event Logic
+    "reach_upper_caverns": lambda state, p: state.can_reach_region("Runestone Caverns - Upper Chambers", p),
+    "reach_royal_upper": lambda state, p: state.can_reach_region("Royal Tower, Upper", p),
+    "reach_royal_lower": lambda state, p: state.can_reach_region("Royal Tower, Lower", p),
+    "reach_ruldo": lambda state, p: state.can_reach_region("Ruldo Forest", p),
+
+    # Specific Card/Item Logic
+    "flight_and_god": lambda state, p: state.has_any(lost_kingdoms_2_flying_cards, p) and state.has(
+        "God of Destruction", p),
+    "hellhound_and_god": lambda state, p: state.has("Hell Hound", p) and state.has("God of Destruction", p),
+    "hellhound_only": lambda state, p: state.has("Hell Hound", p),
+    "hellhound_and_boosters": lambda state, p: state.has("Hell Hound", p) and state.has("Magic Boosters", p),
+    "golem_only": lambda state, p: state.has("Stone Golem", p),
+    "golem_and_boosters": lambda state, p: state.has("Stone Golem", p) and state.has("Magic Boosters", p),
+    "black_liquid_logic": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has(
+        "Black Liquid", p),
+    "black_liquid_only": lambda state, p: state.has("Black Liquid", p),
+    "bottle_only": lambda state, p: state.has("Bottle", p),
+
+    # Key/Quest Logic
+    "mysterious_key": lambda state, p: state.has("Mysterious Key", p),
+    "fountain_key": lambda state, p: state.has("Key to Fountain", p),
+    "castle_gate": lambda state, p: state.has("Castle Gate Key", p),
+    "blue_key": lambda state, p: state.has("Blue Key", p),
+    "red_key": lambda state, p: state.has("Red Key", p),
+    "blue_and_red": lambda state, p: state.has("Blue Key", p) and state.has("Red Key", p),
+    "flight_or_blue": lambda state, p: state.has_any(lost_kingdoms_2_flying_cards, p) or state.has("Blue Key", p),
+    "jewel_and_gate": lambda state, p: state.has("Jewel of Alanjeh", p) and state.has("Castle Gate Key", p),
+    "green_key_and_blue_flight": lambda state, p: state.has("Green Key", p) and (
+                state.has_any(lost_kingdoms_2_flying_cards, p) or state.has("Blue Key", p)),
+
+    # Collection Logic
+    "all_runestones": lambda state, p: state.has_all([
+        "Eno Runestone", "Oht Runestone", "Elise Runestone", "Olf Runestone",
+        "Ebin Runestone", "Keil Runestone", "Nebeth Runestone"], p),
+    "all_blades": lambda state, p: state.has_all([
+        "Blade of Skill", "Blade of Power", "Blade of Wisdom", "Blade of Time"], p),
+    "zombie_dragon": lambda state, p: state.has_all(["Fossil Head", "Fossil Torso", "Fossil Tail",
+        "Fossil Rt Wing", "Fossil Lt Wing", "Fossil Rt Arm",
+        "Fossil Lt Arm", "Fossil Rt Leg", "Fossil Lt Leg"], p),
+
+    # Fairy Progression
+    "fairy_1": lambda state, p: state.has("Red Fairy", p, 1),
+    "fairy_10": lambda state, p: state.has("Red Fairy", p, 10),
+    "fairy_20": lambda state, p: state.has("Red Fairy", p, 20),
+    "fairy_30": lambda state, p: state.has("Red Fairy", p, 30),
+    "fairy_50": lambda state, p: state.has("Red Fairy", p, 50),
+    "fairy_70": lambda state, p: state.has("Red Fairy", p, 70),
+    "fairy_80": lambda state, p: state.has("Red Fairy", p, 80),
+    "fairy_90": lambda state, p: state.has("Red Fairy", p, 90),
+    "fairy_100": lambda state, p: state.has("Red Fairy", p, 100),
+}
