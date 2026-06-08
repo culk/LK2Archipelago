@@ -313,26 +313,28 @@ def _give_item(ctx: LK2Context, item_name: str) -> bool:
     :param item_name: Name of the item to give.
     :return: Whether the item was successfully given.
     """
-    item = lost_kingdoms_2_items.get(item_name, None)
-    if item is None:
-        return False
-    elif item["Type"] == "Card":
-        return give_card(ctx,item_name)
-    elif item["Type"] == "Red Fairy":
-        return give_red_fairy(ctx)
-    elif item["Type"] == "Key Item":
-        return give_key_item(ctx,item_name)
-    elif item["Type"] == "Magic Boosters":
-        return activate_magic_boosters(ctx)
-    elif item["Type"] == "Progressive Player Level":
-        return give_progressive_level(ctx)
-    elif item["Type"] == "Progressive Attribute Proficiency":
-        return add_to_progressive_attribute_proficiency_buffer(ctx,item_name)
-    elif item == "Victory":
-        return True
-    else:
-        logger.error("Received Invalid Item:" + item_name + " " + str(item_name))
-        return False
+    item = lost_kingdoms_2_items.get(item_name)
+
+    # We match on the "Type" key
+    match item.get("Type"):
+        case "Card":
+            return give_card(ctx, item_name)
+        case "Red Fairy":
+            return give_red_fairy(ctx)
+        case "Key Item":
+            return give_key_item(ctx, item_name)
+        case "Magic Boosters":
+            return activate_magic_boosters(ctx)
+        case "Progressive Player Level":
+            return give_progressive_level(ctx)
+        case "Progressive Attribute Proficiency":
+            return add_to_progressive_attribute_proficiency_buffer(ctx, item_name)
+        case "Blue Fairy":
+            return give_blue_fairy(ctx)
+        case "Victory":
+            return True
+        case _:
+            return False
 
 def give_red_fairy(ctx) -> bool:
     logger.debug("Giving fairy")
@@ -468,6 +470,17 @@ async def give_progressive_attribute_proficiency(ctx):
     except Exception as e:
         logger.error(e)
 
+def give_blue_fairy(ctx) -> bool:
+    try:
+        value = read_memory(0x8025d0e0, 1)
+        write_memory(0x8025d0e0, min(value+1,255), 1)
+        increment_item_index(ctx)
+        return True
+    except Exception as e:
+        logger.error(e)
+        return False
+    return False
+
 def increment_item_index(ctx):
     index = read_memory(ITEM_INDEX_ADDRESS)
     write_memory(ITEM_INDEX_ADDRESS, index + 1)
@@ -484,196 +497,6 @@ def make_bl(from_addr: int, to_addr: int) -> int:
 def make_b(from_addr: int, to_addr: int) -> int:
     offset = to_addr - from_addr
     return 0x48000000 | (offset & 0x3FFFFFC)
-
-def modify_code(ctx):
-    # Change the key item location addresses so the locations can be checked
-    # even after receiving the key items.
-
-    #Key locations
-    write_memory(0x8006e78c, 0x80850004, 4)
-    write_memory(0x8006e798, 0x90050004,4)
-    write_memory(0x8006e7c4, 0x80030004, 4)
-    #Magic Boosters visuals
-    write_memory(0x80075738, 0x3C808026, 4)
-    write_memory(0x8007573c, 0x8004D014, 4)
-    write_memory(0x80075740, 0x60000000, 4)
-    #Magic Boosters trigger
-    write_memory(0x8007b334, 0x3C608026, 4)
-    write_memory(0x8007b338, 0x8003D014, 4)
-    #Remove the branch preventing duplicates in shops
-    write_memory(0x800dc438, 0x60000000, 4)
-    #Prevent red fairies from increasing red fairy count
-    if ctx.slot_data.get("fairysanity", 0):
-        write_memory(0x80077034, 0x38040000, 4)
-
-    write_memory(CUSTOM_CODE_JUMP_1, make_bl(CUSTOM_CODE_JUMP_1, CUSTOM_CODE_ADDRESS_1), 4)
-    # 1. Prologue: Create Stack Frame and Save Registers
-    # stwu sp, -0x20(sp) -> Decrement SP and save old SP
-    write_memory(CUSTOM_CODE_ADDRESS_1, 0x9421FFE0, 4)
-    # stw r3, 0x0008(sp) -> Save r3 into our safe frame
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 4, 0x90610008, 4)
-    # stw r4, 0x000C(sp) -> Save r4 into our safe frame
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 8, 0x9081000C, 4)
-    # mflr r0 / stw r0, 0x0024(sp) -> Save LR into the 'Linkage Area' (parent's frame)
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 12, 0x7C0802A6, 4)
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 16, 0x90010024, 4)
-
-    # 2. Logic: Setup and Call ICInvalidateRange
-    # lis r3, 0x8006 / ori r3, r3, 0xE7C4
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 20, 0x3C608006, 4)
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 24, 0x6063E7C4, 4)
-    # li r4, 4
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 28, 0x38800004, 4)
-    # bl INVALIDATE_ADDRESS
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 32, make_bl(CUSTOM_CODE_ADDRESS_1 + 32, INVALIDATE_ADDRESS), 4)
-
-    # 3. Epilogue: Restore Registers and Tear Down Frame
-    # lwz r0, 0x0024(sp) / mtlr r0 -> Restore the original LR
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 36, 0x80010024, 4)
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 40, 0x7C0803A6, 4)
-    # lwz r3, 0x0008(sp) -> Restore r3
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 44, 0x80610008, 4)
-    # lwz r4, 0x000C(sp) -> Restore r4
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 48, 0x8081000C, 4)
-    # addi sp, sp, 32 -> Collapse the stack frame
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 52, 0x38210020, 4)
-
-    # 4. Final Jump: Continue to original destination
-    # Now that SP and LR are restored, the 'blr' at the end of RETURN_1
-    # will correctly return to the original hijacked site's caller.
-    write_memory(CUSTOM_CODE_ADDRESS_1 + 56, make_b(CUSTOM_CODE_ADDRESS_1 + 56, CUSTOM_CODE_RETURN_1), 4)
-    
-    # Change the bl at CUSTOM_CODE_JUMP_2 to go to our custom code
-    write_memory(CUSTOM_CODE_JUMP_2, make_bl(CUSTOM_CODE_JUMP_2, CUSTOM_CODE_ADDRESS_2), 4)
-    # Allocate stack frame
-    write_memory(CUSTOM_CODE_ADDRESS_2, 0x9421FFE0, 4)  # stwu sp, -0x20(sp)
-    # Store the current value of r3
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 4, 0x9061000C, 4)  # stw r3, 0x000C(sp)
-    # Store the current value of r4
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 8, 0x90810010, 4)  # stw r4, 0x0010(sp)
-    # Store the current value of r5
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 12, 0x90A10014, 4)  # stw r5, 0x0014(sp)
-    # Store the address we want to invalidate in r3
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 16, 0x3C608000, 4)  # lis r3, 0x8000
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 20, 0x606318A8, 4)  # ori r3, r3, 0x18A8
-    # Store the value 0x28 to invalidate all the nops
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 24, 0x38800028, 4)  # li r4, 0x28
-    # Store the LR onto the stack
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 28, 0x7C0802A6, 4)  # mflr r0
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 32, 0x90010008, 4)  # stw r0, 0x0008(sp)
-    # Write 10 nop instructions that can be used in the future
-    for x in range(10):
-        write_memory(CUSTOM_CODE_ADDRESS_2 + x * 4 + 36, 0x60000000, 4)
-    if ctx.slot_data.get("progressive_leveling", 0):
-        # Progressive leveling code jump
-        write_memory(CUSTOM_CODE_ADDRESS_2 + 36, make_bl(CUSTOM_CODE_ADDRESS_2 + 36, CUSTOM_LEVEL_UP_CODE), 4)
-    if ctx.slot_data.get("progressive_attribute_proficiencies", 0):
-        #Add the code to call the Attribute up code
-        write_memory(CUSTOM_CODE_ADDRESS_2+44, make_bl(CUSTOM_CODE_ADDRESS_2+44, CUSTOM_ATTRIBUTE_UP_CODE),4)
-    # Jump to the ICInvalidateRange function
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 76, make_bl(CUSTOM_CODE_ADDRESS_2 + 76, INVALIDATE_ADDRESS), 4)
-    # Write the stored LR back into the LR register
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 80, 0x80010008, 4)  # lwz r0, 0x0008(sp)
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 84, 0x7C0803A6, 4)  # mtlr r0
-    # Write the stored r3 value back into r3
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 88, 0x8061000C, 4)  # lwz r3, 0x000C(sp)
-    # Write the stored value of r4 back into r4
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 92, 0x80810010, 4)  # lwz r4, 0x0010(sp)
-    # Write the stored value of r5 back into r5
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 96, 0x80A10014, 4)  # lwz r5, 0x0014(sp)
-    # Deallocate stack frame
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 100, 0x38210020, 4)  # addi sp, sp, 0x20
-    # Jump back to original destination
-    write_memory(CUSTOM_CODE_ADDRESS_2 + 104, make_b(CUSTOM_CODE_ADDRESS_2 + 104, CUSTOM_CODE_RETURN_2), 4)
-
-    if ctx.slot_data.get("progressive_leveling", 0):
-        #Remove the xp check
-        write_memory(0x800736d0,0x60000000,4)
-        #Remove the standard level up function call
-        write_memory(0x8007d0f8,0x60000000,4)
-
-
-        #Level up trigger
-        # --- PROLOGUE: Save State & Create Frame ---
-        # --- Save State ---
-        write_memory(CUSTOM_LEVEL_UP_CODE, 0x9421FFD0, 4)  # stwu sp, -0x30(sp)
-        write_memory(CUSTOM_LEVEL_UP_CODE + 4, 0x7C0802A6, 4)  # mflr r0
-        write_memory(CUSTOM_LEVEL_UP_CODE + 8, 0x90010024, 4)  # stw r0, 0x0024(sp)
-        write_memory(CUSTOM_LEVEL_UP_CODE + 12, 0x90610008, 4)  # stw r3, 0x0008(sp)
-        write_memory(CUSTOM_LEVEL_UP_CODE + 16, 0x9081000C, 4)  # stw r4, 0x000C(sp)
-
-        # --- Load Desired Level (0x8025D01D) ---
-        write_memory(CUSTOM_LEVEL_UP_CODE + 20, 0x3C608025, 4)  # lis r3, 0x8025
-        write_memory(CUSTOM_LEVEL_UP_CODE + 24, 0x6063D01D, 4)  # ori r3, r3, 0xD01D
-        write_memory(CUSTOM_LEVEL_UP_CODE + 28, 0x88030000, 4)  # lbz r0, 0(r3)
-
-        # --- Load Current Level (0x8025D02C) ---
-        write_memory(CUSTOM_LEVEL_UP_CODE + 32, 0x3C808025, 4)  # lis r4, 0x8025
-        write_memory(CUSTOM_LEVEL_UP_CODE + 36, 0x6084D02C, 4)  # ori r4, r4, 0xD02C
-        write_memory(CUSTOM_LEVEL_UP_CODE + 40, 0x88840000, 4)  # lbz r4, 0(r4)
-
-        # --- Compare and Call ---
-        write_memory(CUSTOM_LEVEL_UP_CODE + 44, 0x7C002040, 4)  # cmplw r0, r4
-        write_memory(CUSTOM_LEVEL_UP_CODE + 48, 0x40810008, 4)  # ble +0x08 (Skip bl if r0 <= r4)
-        write_memory(CUSTOM_LEVEL_UP_CODE + 52, make_bl(CUSTOM_LEVEL_UP_CODE + 52, 0x80073674), 4)
-
-        # --- Cleanup ---
-        write_memory(CUSTOM_LEVEL_UP_CODE + 56, 0x80010024, 4)  # lwz r0, 0x0024(sp)
-        write_memory(CUSTOM_LEVEL_UP_CODE + 60, 0x7C0803A6, 4)  # mtlr r0
-        write_memory(CUSTOM_LEVEL_UP_CODE + 64, 0x80610008, 4)  # lwz r3, 0x0008(sp)
-        write_memory(CUSTOM_LEVEL_UP_CODE + 68, 0x8081000C, 4)  # lwz r4, 0x000C(sp)
-        write_memory(CUSTOM_LEVEL_UP_CODE + 72, 0x38210030, 4)  # addi sp, sp, 0x30
-        write_memory(CUSTOM_LEVEL_UP_CODE + 76, 0x4E800020, 4)  # blr
-
-    if ctx.slot_data.get("progressive_attribute_proficiencies", 0):
-        #Remove the attribute xp additions/subtractions
-        write_memory(0x80070af8, 0x48000144,4)
-        write_memory(0x80070aec,0x480001dc,4)
-
-        # 0x00: Prologue
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 0, 0x9421FFD0, 4)  # stwu sp, -0x30(sp)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 4, 0x7C0802A6, 4)  # mflr r0
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 8, 0x90010024, 4)  # stw r0, 0x0024(sp)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 12, 0x90610008, 4)  # stw r3, 0x0008(sp)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 16, 0x90810010, 4)  # stw r4, 0x0010(sp)
-
-        # +20: Address Prep & Trigger Check
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 20, 0x3C608025, 4)  # lis r3, 0x8025
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 24, 0x6063D01E, 4)  # ori r3, r3, 0xD01E
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 28, 0x88030000, 4)  # lbz r0, 0(r3)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 32, 0x2C000000, 4)  # cmpwi r0, 0
-
-        # +36: Skip if 0 (Jump 28 bytes forward to +64)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 36, 0x4182001C, 4)  # beq +0x1C
-
-        # +40: Setup Arguments & Call
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 40, 0x38600000, 4)  # li r3, 0
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 44, make_bl(CUSTOM_ATTRIBUTE_UP_CODE + 44, 0x80070A88), 4)
-
-        # +48: Fresh Address Prep for Reset (Ensures r3 is correct)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 48, 0x3C608025, 4)  # lis r3, 0x8025
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 52, 0x6063D01E, 4)  # ori r3, r3, 0xD01E
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 56, 0x38000000, 4)  # li r0, 0
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 60, 0x98030000, 4)  # stb r0, 0(r3)
-
-        # +64: Cleanup & Return
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 64, 0x80010024, 4)  # lwz r0, 0x0024(sp)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 68, 0x7C0803A6, 4)  # mtlr r0
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 72, 0x80610008, 4)  # lwz r3, 0x0008(sp)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 76, 0x80810010, 4)  # lwz r4, 0x0010(sp)
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 80, 0x38210030, 4)  # addi sp, sp, 48
-        write_memory(CUSTOM_ATTRIBUTE_UP_CODE + 84, 0x4E800020, 4)  # blr
-
-    #setup for level randomization
-    if ctx.slot_data.get("randomize_levels", 0):
-        random.seed(ctx.slot_data.get("Seed", -1)+4)
-        global level_ordering
-        level_ordering = randomize_exits()
-        logger.debug("Level ordering is:" + str(level_ordering))
-        write_memory(0x800a69a8, 0x60000000, 4)
-
-
-    logger.debug("Modified code")
 
 def randomize_levels(ctx):
     random.seed(ctx.slot_data.get("Seed", -1) + 4)
@@ -818,8 +641,8 @@ def level_modifications(ctx):
             (level_id==lost_kingdoms_2_regions["Holzogh Town"]["levelID"] and read_memory(0x802e941e) == 55264) or
             (level_id==lost_kingdoms_2_regions["Nobleman's Residence"]["levelID"] and read_memory(0x802e941e) in [55296,55472,55456,55440,55488] and read_memory(0x8025dc0c,1)!=0)):
         write_memory(0x8006e7c4, 0x8003005c, 4)
-    #Make it so the guard that opens up Krasheen Mountains always spawns
-    elif level_id==lost_kingdoms_2_regions["Royal Tower, Lower"]["levelID"]:
+    #Make it so the guard that opens up Krasheen Mountains always spawns, but not if they haven't finished the forced sequence(to ensure stone of sealing works)
+    elif level_id==lost_kingdoms_2_regions["Royal Tower, Lower"]["levelID"] and read_memory(0x8025e04c, 1) == 1:
         write_memory(0x8006e7c4,0x38000001,4)
     else:
         write_memory(0x8006e7c4, 0x80030004, 4)
@@ -1296,7 +1119,6 @@ async def dolphin_sync_task_main_task(ctx: LK2Context):
                     ONE_TIME_MODIFIERS_IN_GAME = False
                 if (not ONE_TIME_MODIFIERS_IN_GAME) and ctx.slot_data and check_ingame():
                     logger.debug("Triggering one time in game modifiers")
-                    #modify_code(ctx)
                     randomize_levels(ctx)
                     logger.debug("Slot data:" + str(ctx.slot_data))
                     if ctx.slot_data.get("open_world", 0):

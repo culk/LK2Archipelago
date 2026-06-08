@@ -6,7 +6,8 @@ from Options import Choice, Option, PerGameCommonOptions, Range, DeathLink, Togg
 from typing import Dict
 
 class WinConditionOption(Choice):
-    """Choose the win condition."""
+    """Choose the win condition.
+    Baseline: 175 locations, 175 items"""
     display_name = "Win Condition"
     option_defeat_god_of_harmony = 0
     option_defeat_emperor = 1
@@ -15,14 +16,16 @@ class WinConditionOption(Choice):
     default = 0
 
 class CollectRedFariesAmount(Range):
-    """Only relevant if your goal is collecting red fairies"""
+    """How many red fairies you need to goal.
+    Only relevant if your goal is collecting red fairies."""
     display_name = "Collect Red Fairies Amount"
     range_start = 1
     range_end = 97
     default = 50
 
 class FairysanityConditionOption(Toggle):
-    """Choose whether Red Fairies are added to the pool"""
+    """Choose whether Red Fairies are added to the pool.
+    +100 locations, +100 items."""
     display_name = "Fairysanity"
     default = 1
 
@@ -33,24 +36,32 @@ class ShopsanityConditionOption(Toggle):
     default = 0
 
 class CombosanityConditionOption(Toggle):
-    """Choose whether to add combos as checks."""
+    """Choose whether to add combos as checks.
+    +40 locations."""
     display_name = "Combosanity"
     default = 0
 
-class EnemysanityConditionOption(Toggle):
-    """Choose whether to make every single unique enemy kill is a check.
+class EnemysanityConditionOption(Choice):
+    """Choose whether to make every single unique enemy kill a check.
     Be warned that spawn triggers in this game are very unintuitive, hidden, and
-    once a level is beaten it will have new enemy spawns. Please report any issue you encounter."""
+    once a level is beaten it will have new enemy spawns. Please report any issue you encounter.
+    Enemysanity Plus includes all the enemies in the Proving Grounds.
+    +540 locations. Enemysanity Plus: additional +405"""
     display_name = "Enemysanity"
+    option_disabled = 0
+    option_enemysanity = 1
+    option_enemysanity_plus = 2
     default = 0
 
 class ProgressiveLevelingOption(Toggle):
-    """Choose whether to have character levels as a progressive item. You will no longer be able to level up normally."""
+    """Choose whether to have character levels as a progressive item. You will no longer be able to level up normally.
+    +19 items"""
     display_name = "Progressive Leveling"
     default = 0
 
 class ProgressiveAttributeProficienciesOption(Toggle):
-    """Choose whether to have character levels as a progressive item. You will no longer be able to level up normally."""
+    """Choose whether to have character levels as a progressive item. You will no longer be able to level up normally.
+    +34 items"""
     display_name = "Progressive Leveling"
     default = 0
 

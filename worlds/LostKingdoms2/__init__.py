@@ -28,6 +28,7 @@ location_name_to_id = {}
 item_name_to_id = {}
 
 rng_seed = None
+level_ordering = None
 
 def run_client(*args):
     from .LK2Client import main  # lazy import
@@ -73,12 +74,6 @@ class LostKingdoms2World(World):
             location_id += 1
     globals()['location_name_to_id'] = location_name_to_id
 
-    # Items can be grouped using their names to allow easy checking if any item
-    # from that group has been collected. Group names can also be used for !hint
-    item_name_groups = {
-        "groups": {"red_fairy", "world", "shop", "key_item"},
-    }
-
     def __init__(self, multiworld: MultiWorld, player: int):
         super(LostKingdoms2World, self).__init__(multiworld, player)
         self.configure_logging()
@@ -114,7 +109,7 @@ class LostKingdoms2World(World):
             classification = ItemClassification.progression_deprioritized_skip_balancing
         elif self.options.combosanity.value and item in lost_kingdoms_2_cards and lost_kingdoms_2_cards[item]["hasCombo"]:
             classification = ItemClassification.progression_deprioritized_skip_balancing
-        elif item == "Progressive Player Level" or item=="Progressive Attribute Proficiency":
+        elif item == "Progressive Player Level" or item == "Progressive Attribute Proficiency":
             classification = ItemClassification.useful
         else:
             classification = ItemClassification.filler
@@ -146,7 +141,11 @@ class LostKingdoms2World(World):
                 lost_kingdoms_2_filler_cards.append(key)
             else:
                 lost_kingdoms_2_progression_cards.append(key)
-        num_of_random_cards = len(lost_kingdoms_2_chests) + (self.options.combosanity.value * len(lost_kingdoms_2_combos)) + (self.options.shopsanity.value * len(lost_kingdoms_2_shop_purchases)) - len(lost_kingdoms_2_progression_cards) - 19 * self.options.progressive_leveling.value - 34 * self.options.progressive_attribute_proficiencies.value + (self.options.enemysanity.value * len(lost_kingdoms_2_enemies))
+        num_of_random_cards = len(lost_kingdoms_2_chests) + (self.options.combosanity.value * len(lost_kingdoms_2_combos)) + (self.options.shopsanity.value * len(lost_kingdoms_2_shop_purchases)) - len(lost_kingdoms_2_progression_cards) - 19 * self.options.progressive_leveling.value - 34 * self.options.progressive_attribute_proficiencies.value
+        if self.options.enemysanity.value!=0:
+            for location in lost_kingdoms_2_enemies:
+                if self.options.enemysanity.value == 2 or not ("Proving Grounds" in location):
+                    num_of_random_cards += 1
         #Ensure there is always enough filler cards by doubling the pool until it's large enough
         while len(lost_kingdoms_2_filler_cards)*multiplier < num_of_random_cards:
             for key in lost_kingdoms_2_filler_cards:
@@ -181,11 +180,11 @@ class LostKingdoms2World(World):
             return True
         elif item in lost_kingdoms_2_flying_cards:
             return True
-        elif item in lost_kingdoms_2_jumping_cards:
+        elif item in lost_kingdoms_2_jumping_cards or item == "Unicorn":
             return True
         elif item in lost_kingdoms_2_key_items:
             return True
-        elif self.options.exclude_sacred_battle_arena_checks.value == 0 and lost_kingdoms_2_items[item]["Type"] == "Progressive Attribute Proficiency":
+        elif lost_kingdoms_2_items[item]["Type"] == "Progressive Attribute Proficiency":
             return True
         else:
             return False
@@ -220,6 +219,8 @@ class LostKingdoms2World(World):
                 continue
             if lost_kingdoms_2_locations[key]["type"] == "Enemysanity" and self.options.enemysanity.value==0:
                 continue
+            if lost_kingdoms_2_locations[key]["type"] == "Enemysanity" and "Proving Grounds" in key and self.options.enemysanity.value!=2:
+                continue
             region = self.multiworld.get_region(lost_kingdoms_2_locations[key]["level"], self.player)
             location_data = LK2LocationData(self.location_name_to_id[key])
             location = LK2Location(self.player,key, region, location_data)
@@ -243,19 +244,19 @@ class LostKingdoms2World(World):
     def set_rules(self) -> None:
 
         exit_rules = {
-                "Nobleman's Residence Exit 2": lambda state: state.has("Mysterious Key", self.player),
-                "Bhashea High Road Exit 3": lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player) or state.has_any(lost_kingdoms_2_jumping_cards, self.player),
-                "Gromtull Desert Exit 1": lambda state: state.has("Black Liquid", self.player),
-                "Kendarie Fortress Exit 1": lambda state: state.has("Red Key", self.player) and state.has("Blue Key",self.player),
-                "Runestone Caverns - Upper Chambers Exit 1": lambda state: state.has("Stone Golem", self.player),
-                "Krasheen Mountains Exit 1": lambda state: state.has_any(lost_kingdoms_2_flying_cards, self.player),
-                "Fossil Boneyard Exit 1": lambda state: state.has_any(lost_kingdoms_2_jumping_cards,self.player) and state.has("Magic Boosters",self.player),
-                "Plains of Rowahl Exit 1": lambda state: state.has("Castle Gate Key", self.player),
-                "Holzogh Town Exit 2": lambda state: state.can_reach_region("Royal Tower, Lower", self.player)
-            }
+            "Nobleman's Residence Exit 2": lambda state: lost_kingdoms_2_logic["mysterious_key"](state, self.player),
+            "Bhashea High Road Exit 3": lambda state: lost_kingdoms_2_logic["jump_or_flight_or_unicorn"](state,self.player),
+            "Gromtull Desert Exit 1": lambda state: lost_kingdoms_2_logic["black_liquid_only"](state, self.player),
+            "Kendarie Fortress Exit 1": lambda state: lost_kingdoms_2_logic["blue_and_red"](state, self.player),
+            "Runestone Caverns - Upper Chambers Exit 1": lambda state: lost_kingdoms_2_logic["golem_only"](state,self.player),
+            "Krasheen Mountains Exit 1": lambda state: lost_kingdoms_2_logic["flight_only"](state, self.player),
+            "Fossil Boneyard Exit 1": lambda state: lost_kingdoms_2_logic["jump_and_boosters"](state, self.player),
+            "Plains of Rowahl Exit 1": lambda state: lost_kingdoms_2_logic["castle_gate"](state, self.player),
+            "Holzogh Town Exit 2": lambda state: lost_kingdoms_2_logic["reach_royal_lower"](state, self.player)
+        }
 
         if self.options.randomize_levels.value:
-            global rng_seed
+            global rng_seed, level_ordering
             if rng_seed is None:
                 rng_seed = self.multiworld.seed
             random.seed(rng_seed + 4)
@@ -264,6 +265,7 @@ class LostKingdoms2World(World):
             inverted_ordering = {dest: exit_key for exit_key, dest in level_ordering.items()}
         else:
             inverted_ordering = {dest: exit_key for exit_key, dest in lost_kingdoms_2_region_exits.items()}
+            level_ordering = lost_kingdoms_2_region_exits
 
         for region_name in lost_kingdoms_2_regions:
             region = self.multiworld.get_region(region_name, self.player)
@@ -323,10 +325,10 @@ class LostKingdoms2World(World):
                     previous_region = self.multiworld.get_region("Sacred Battle Arena 1", self.player)
                     if self.options.progressive_attribute_proficiencies.value:
                         previous_region.connect(region, f"{region.name}", lambda state:
-                                                state.has("Progressive Attribute Proficiency: Earth",3, self.player) and
-                                                state.has("Progressive Attribute Proficiency: Water",3, self.player) and
-                                                state.has("Progressive Attribute Proficiency: Fire",3, self.player) and
-                                                state.has("Progressive Attribute Proficiency: Wood",3, self.player))
+                                                state.has("Progressive Attribute Proficiency: Earth",self.player,3) and
+                                                state.has("Progressive Attribute Proficiency: Water",self.player,3) and
+                                                state.has("Progressive Attribute Proficiency: Fire",self.player,3) and
+                                                state.has("Progressive Attribute Proficiency: Wood",self.player,3))
                     else:
                         previous_region.connect(region, f"{region.name}")
                 case "Fossil Boneyard":
@@ -378,9 +380,67 @@ class LostKingdoms2World(World):
                 case "Royal Tower, Upper":
                     previous_region = self.multiworld.get_region("Royal Tower, Middle", self.player)
                     previous_region.connect(region, f"{region.name}")
-                case "Proving Grounds":
+                case "Proving Grounds F1":
                     previous_region = self.multiworld.get_region("Royal Tower, Upper", self.player)
                     previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F2":
+                    previous_region = self.multiworld.get_region("Proving Grounds F1", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F3":
+                    previous_region = self.multiworld.get_region("Proving Grounds F2", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F4":
+                    previous_region = self.multiworld.get_region("Proving Grounds F3", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F5":
+                    previous_region = self.multiworld.get_region("Proving Grounds F4", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F6":
+                    previous_region = self.multiworld.get_region("Proving Grounds F5", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F7":
+                    previous_region = self.multiworld.get_region("Proving Grounds F6", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F8":
+                    previous_region = self.multiworld.get_region("Proving Grounds F7", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F9":
+                    previous_region = self.multiworld.get_region("Proving Grounds F8", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F10":
+                    previous_region = self.multiworld.get_region("Proving Grounds F9", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F11":
+                    previous_region = self.multiworld.get_region("Proving Grounds F10", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F12":
+                    previous_region = self.multiworld.get_region("Proving Grounds F11", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F13":
+                    previous_region = self.multiworld.get_region("Proving Grounds F12", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F14":
+                    previous_region = self.multiworld.get_region("Proving Grounds F13", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F15":
+                    previous_region = self.multiworld.get_region("Proving Grounds F14", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F16":
+                    previous_region = self.multiworld.get_region("Proving Grounds F15", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F17":
+                    previous_region = self.multiworld.get_region("Proving Grounds F16", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F18":
+                    previous_region = self.multiworld.get_region("Proving Grounds F17", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F19":
+                    previous_region = self.multiworld.get_region("Proving Grounds F18", self.player)
+                    previous_region.connect(region, f"{region.name}")
+                case "Proving Grounds F20":
+                    previous_region = self.multiworld.get_region("Proving Grounds F19", self.player)
+                    previous_region.connect(region, f"{region.name}")
+
 
         for location in self.multiworld.get_locations(self.player):
             if location.name in lost_kingdoms_2_locations:
@@ -398,31 +458,31 @@ class LostKingdoms2World(World):
             match location.name:
                 case "Sacred Battle Arena 1 - defeat Lich":
                     if self.options.progressive_attribute_proficiencies.value:
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Earth", 3, self.player))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Earth", self.player, 3))
                 case "Sacred Battle Arena 1 - defeat Nueh":
                     if self.options.progressive_attribute_proficiencies.value:
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Wood", 3, self.player))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Wood",self.player,3))
                 case "Sacred Battle Arena 1 - defeat Gemini":
                     if self.options.progressive_attribute_proficiencies.value:
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Fire", 3, self.player))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Fire",self.player,3))
                 case "Sacred Battle Arena 1 - defeat Kraken":
                     if self.options.progressive_attribute_proficiencies.value:
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Water", 3, self.player))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Water",self.player,3))
                 case "Sacred Battle Arena 2 - defeat Rabandos" | "Sacred Battle Arena 2 - defeat Helena":
                     if self.options.progressive_attribute_proficiencies.value:
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Neutral",5, self.player))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Neutral",self.player,3))
                 case "Sacred Battle Arena 2 - defeat AstroBot" | "Sacred Battle Arena 2 - Red Fairy machines":
                     if self.options.progressive_attribute_proficiencies.value:
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Mech", 5, self.player))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Mech",self.player,3))
                 case "Sacred Battle Arena 2 - defeat Leod":
-                    add_rule(location,lambda state: state.can_reach_region("Royal Tower, Upper"))
+                    add_rule(location,lambda state: state.can_reach_region("Royal Tower, Upper", self.player), self.player)
                     if self.options.progressive_attribute_proficiencies.value:
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Mech", 5, self.player))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Mech",self.player,3))
                 case "Sacred Battle Arena 2 - defeat Thalnos" | "Sacred Battle Arena 2 - defeat Katia" | "Sacred Battle Arena 2 - Red Fairy Queen Katia":
-                    add_rule(location, lambda state: state.can_reach_region("Royal Tower, Upper"))
+                    add_rule(location, lambda state: state.can_reach_region("Royal Tower, Upper", self.player), self.player)
                     if self.options.progressive_attribute_proficiencies.value:
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Mech", 5, self.player))
-                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Neutral", 5, self.player))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Mech",self.player,3))
+                        add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Neutral",self.player,3))
                 case "Combo - Triple Hagan":
                     add_rule(location, lambda state: state.has("Rock Hagan", self.player))
                     add_rule(location, lambda state: state.has("Bum Hagan", self.player))
@@ -593,7 +653,8 @@ class LostKingdoms2World(World):
             "randomize_magic_stone_costs": self.options.randomize_magic_stone_costs.value,
             "randomize_levels": self.options.randomize_levels.value,
             "progressive_leveling": self.options.progressive_leveling.value,
-            "progressive_attribute_proficiencies":self.options.progressive_attribute_proficiencies.value
+            "progressive_attribute_proficiencies":self.options.progressive_attribute_proficiencies.value,
+            "level_randomization_mapping": level_ordering
         }
 
     #This function exists for universal tracker to align the rng
@@ -665,15 +726,6 @@ class LostKingdoms2World(World):
         # Write the expected output zip container to the Generated Seed folder.
         lk2_container.write()
 
-
-EXCLUDED_REGIONS = {
-    "Royal Tower, Lower",
-    "Royal Tower, Middle",
-    "Royal Tower, Upper",
-    "Proving Grounds",
-    "Sacred Battle Arena 2"
-}
-
 def source_of(exit_key: str) -> str:
     return exit_key.rsplit(" Exit ", 1)[0]
 
@@ -694,9 +746,12 @@ def randomize_exits(start_region: str = "Nobleman's Residence") -> dict:
     for source in exits_by_source:
         exits_by_source[source].sort()
 
-    all_regions = set(lost_kingdoms_2_regions.keys())
     # Ensure regions_to_place is a strictly sorted list from the start
-    regions_to_place = sorted(list(all_regions - {start_region} - EXCLUDED_REGIONS))
+    regions_to_place = []
+    for region in lost_kingdoms_2_regions.keys():
+        if not lost_kingdoms_2_regions[region]["exclude_from_level_randomization"]:
+            regions_to_place.append(region)
+    regions_to_place = sorted(regions_to_place)
 
     # Initialize available_exits and sort immediately
     available_exits = sorted(exits_by_source.get(start_region, []))
@@ -766,31 +821,29 @@ def randomize_exits(start_region: str = "Nobleman's Residence") -> dict:
 
 lost_kingdoms_2_logic = {
     # Movement Logic
-    "jump_or_flight": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) or state.has_any(
-        lost_kingdoms_2_flying_cards, p),
+    "jump_or_flight": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) or state.has_any(lost_kingdoms_2_flying_cards, p),
+    "jump_or_flight_or_unicorn": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) or state.has_any(lost_kingdoms_2_flying_cards, p) or state.has("Unicorn", p),
     "flight_only": lambda state, p: state.has_any(lost_kingdoms_2_flying_cards, p),
     "jumping_only": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p),
-    "jump_and_boosters": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has(
-        "Magic Boosters", p),
-    "jump_boost_flight": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has(
-        "Magic Boosters", p) and state.has_any(lost_kingdoms_2_flying_cards, p),
+    "jump_and_boosters": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has("Magic Boosters", p),
+    "jump_boost_flight": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has("Magic Boosters", p) and state.has_any(lost_kingdoms_2_flying_cards, p),
 
     # Region/Event Logic
     "reach_upper_caverns": lambda state, p: state.can_reach_region("Runestone Caverns - Upper Chambers", p),
     "reach_royal_upper": lambda state, p: state.can_reach_region("Royal Tower, Upper", p),
     "reach_royal_lower": lambda state, p: state.can_reach_region("Royal Tower, Lower", p),
-    "reach_ruldo": lambda state, p: state.can_reach_region("Ruldo Forest", p),
+    "upper_caverns_complete": lambda state, p: state.can_reach_region("Runestone Caverns - Upper Chambers", p) and state.has("Stone Golem", p),
 
     # Specific Card/Item Logic
-    "flight_and_god": lambda state, p: state.has_any(lost_kingdoms_2_flying_cards, p) and state.has(
-        "God of Destruction", p),
-    "hellhound_and_god": lambda state, p: state.has("Hell Hound", p) and state.has("God of Destruction", p),
+    "flight_and_god": lambda state, p: state.has_any(lost_kingdoms_2_flying_cards, p) and state.has("God of Destruction", p),
+    "hellhound_or_unicorn_and_god": lambda state, p: (state.has("Hell Hound", p) or state.has("Unicorn", p)) and state.has("God of Destruction", p),
+    "hellhound_or_unicorn": lambda state, p: state.has("Hell Hound", p) or state.has("Unicorn", p),
     "hellhound_only": lambda state, p: state.has("Hell Hound", p),
+    "hellhound_or_unicorn_and_booster_and_jumper": lambda state, p: state.has("Magic Boosters", p) and (state.has("Hell Hound", p) or (state.has("Unicorn", p) and state.has_any(lost_kingdoms_2_jumping_cards, p))),
     "hellhound_and_boosters": lambda state, p: state.has("Hell Hound", p) and state.has("Magic Boosters", p),
     "golem_only": lambda state, p: state.has("Stone Golem", p),
     "golem_and_boosters": lambda state, p: state.has("Stone Golem", p) and state.has("Magic Boosters", p),
-    "black_liquid_logic": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has(
-        "Black Liquid", p),
+    "black_liquid_logic": lambda state, p: state.has_any(lost_kingdoms_2_jumping_cards, p) and state.has("Black Liquid", p),
     "black_liquid_only": lambda state, p: state.has("Black Liquid", p),
     "bottle_only": lambda state, p: state.has("Bottle", p),
 
@@ -801,10 +854,9 @@ lost_kingdoms_2_logic = {
     "blue_key": lambda state, p: state.has("Blue Key", p),
     "red_key": lambda state, p: state.has("Red Key", p),
     "blue_and_red": lambda state, p: state.has("Blue Key", p) and state.has("Red Key", p),
-    "flight_or_blue": lambda state, p: state.has_any(lost_kingdoms_2_flying_cards, p) or state.has("Blue Key", p),
+    "flight_jump_or_bluekey": lambda state, p: state.has_any(lost_kingdoms_2_flying_cards, p) or state.has_any(lost_kingdoms_2_jumping_cards, p) or state.has("Unicorn", p) or state.has("Blue Key", p),
     "jewel_and_gate": lambda state, p: state.has("Jewel of Alanjeh", p) and state.has("Castle Gate Key", p),
-    "green_key_and_blue_flight": lambda state, p: state.has("Green Key", p) and (
-                state.has_any(lost_kingdoms_2_flying_cards, p) or state.has("Blue Key", p)),
+    "green_key_and_flight_or_jump_or_bluekey": lambda state, p: state.has("Green Key", p) and (state.has_any(lost_kingdoms_2_flying_cards, p) or state.has_any(lost_kingdoms_2_jumping_cards, p) or state.has("Unicorn", p) or state.has("Blue Key", p)),
 
     # Collection Logic
     "all_runestones": lambda state, p: state.has_all([
@@ -817,10 +869,10 @@ lost_kingdoms_2_logic = {
         "Fossil Lt Arm", "Fossil Rt Leg", "Fossil Lt Leg"], p),
 
     #Sacred Battle Arena Logic
-    "earth_proficiency": lambda state, p: state.has("Progressive Attribute Proficiency: Earth",3),
-    "fire_proficiency": lambda state, p: state.has("Progressive Attribute Proficiency: Fire",3),
-    "water_proficiency": lambda state, p: state.has("Progressive Attribute Proficiency: Water",3),
-    "wood_proficiency": lambda state, p: state.has("Progressive Attribute Proficiency: Wood",3),
+    "earth_proficiency": lambda state, p: state.has("Progressive Attribute Proficiency: Earth", p, 3),
+    "fire_proficiency": lambda state, p: state.has("Progressive Attribute Proficiency: Fire", p, 3),
+    "water_proficiency": lambda state, p: state.has("Progressive Attribute Proficiency: Water", p, 3),
+    "wood_proficiency": lambda state, p: state.has("Progressive Attribute Proficiency: Wood", p, 3),
 
     # Fairy Progression
     "fairy_1": lambda state, p: state.has("Red Fairy", p, 1),
