@@ -176,7 +176,7 @@ class LK2Randomizer:
             #Add the code to call the Attribute up code
             self.patch_iso_from_ram(iso_file, CUSTOM_CODE_ADDRESS_2+40, self.make_bl(CUSTOM_CODE_ADDRESS_2+40, CUSTOM_ATTRIBUTE_UP_CODE))
         #Jump to custom magic crystal function
-        self.patch_iso_from_ram(iso_file, CUSTOM_CODE_ADDRESS_2+44, self.make_bl(CUSTOM_CODE_ADDRESS_2+44, CUSTOM_MAGIC_CRYSTALS_CODE))
+        #self.patch_iso_from_ram(iso_file, CUSTOM_CODE_ADDRESS_2+44, self.make_bl(CUSTOM_CODE_ADDRESS_2+44, CUSTOM_MAGIC_CRYSTALS_CODE))
         #Jump to custom heal function
         #self.patch_iso_from_ram(iso_file, CUSTOM_CODE_ADDRESS_2+48, self.make_bl(CUSTOM_CODE_ADDRESS_2+48, CUSTOM_HEAL_CODE))
         #Jump to custom card return function
@@ -275,75 +275,75 @@ class LK2Randomizer:
             self.patch_iso_from_ram(iso_file, CUSTOM_ATTRIBUTE_UP_CODE + 80, 0x38210030)  # addi sp, sp, 48
             self.patch_iso_from_ram(iso_file, CUSTOM_ATTRIBUTE_UP_CODE + 84, 0x4E800020)  # blr
 
-        #Code for healing akin to blue fairies.
-        # 0x00: Prologue
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 0, 0x9421FFD0)  # stwu sp, -0x30(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 4, 0x7C0802A6)  # mflr r0
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 8, 0x90010024)  # stw r0, 0x0024(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 12, 0x90610008)  # stw r3, 0x0008(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 16, 0x90810010)  # stw r4, 0x0010(sp)
-
-        # +20: Read the Heal Trigger value (0x8025d0e0)
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 20, 0x3C608025)  # lis r3, 0x8025
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 24, 0x6063D0E0)  # ori r3, r3, 0xD0E0
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 28, 0x80030000)  # lwz r0, 0(r3)
-
-        # +32: Compare
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 32, 0x2C000000)  # cmpwi r0, 0
-
-        # +36: Skip modification if r0 <= 0
-        # We jump 16 bytes (0x10) to the Cleanup section if the value is not > 0
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 36, self.make_b(CUSTOM_HEAL_CODE + 36,CUSTOM_HEAL_CODE + 52))
-
-        # +40: Decrement and Save
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 40,0x3800FFFF)  # subi r0, r0, 1 (effectively r0 = r0 - 1)
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 44, 0x90030000)  # stw r0, 0(r3)
-
-        # +48: Jump to 0x80043288
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 48, self.make_b(CUSTOM_HEAL_CODE + 48, 0x80043288))
-
-        # +52: Cleanup & Return
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 52, 0x80010024)  # lwz r0, 0x0024(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 56, 0x7C0803A6)  # mtlr r0
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 60, 0x80610008)  # lwz r3, 0x0008(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 64, 0x80810010)  # lwz r4, 0x0010(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 68, 0x38210030)  # addi sp, sp, 48
-        self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 72, 0x4E800020)  # blr
-
-        # Code for granting magic crystals akin to blue fairies.
-        # 0x00: Prologue
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 0, 0x9421FFD0)  # stwu sp, -0x30(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 4, 0x7C0802A6)  # mflr r0
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 8, 0x90010024)  # stw r0, 0x0024(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 12, 0x90610008)  # stw r3, 0x0008(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 16, 0x90810010)  # stw r4, 0x0010(sp)
-
-        # +20: Read the Magic Crystals Trigger value (0x8025d0e0)
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 20, 0x3C608025)  # lis r3, 0x8025
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 24, 0x6063D0E0)  # ori r3, r3, 0xD0E0
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 28, 0x80030000)  # lwz r0, 0(r3)
-
-        # +32: Compare
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 32, 0x2C000000)  # cmpwi r0, 0
-
-        # +36: Skip modification if r0 <= 0
-        # We jump 16 bytes (0x10) to the Cleanup section if the value is not > 0
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 36, 0x41820010)  # ble +0x10
-
-        # +40: Decrement and Save
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 40,0x3800FFFF)  # subi r0, r0, 1 (effectively r0 = r0 - 1)
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 44, 0x90030000)  # stw r0, 0(r3)
-
-        # +48: Jump to 0x80042fa4
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 48,self.make_b(CUSTOM_MAGIC_CRYSTALS_CODE + 48, 0x80042fa4))
-
-        # +52: Cleanup & Return
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 52, 0x80010024)  # lwz r0, 0x0024(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 56, 0x7C0803A6)  # mtlr r0
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 60, 0x80610008)  # lwz r3, 0x0008(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 64, 0x80810010)  # lwz r4, 0x0010(sp)
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 68, 0x38210030)  # addi sp, sp, 48
-        self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 72, 0x4E800020)  # blr
+        # #Code for healing akin to blue fairies.
+        # # 0x00: Prologue
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 0, 0x9421FFD0)  # stwu sp, -0x30(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 4, 0x7C0802A6)  # mflr r0
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 8, 0x90010024)  # stw r0, 0x0024(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 12, 0x90610008)  # stw r3, 0x0008(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 16, 0x90810010)  # stw r4, 0x0010(sp)
+        #
+        # # +20: Read the Heal Trigger value (0x8025d0e0)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 20, 0x3C608025)  # lis r3, 0x8025
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 24, 0x6063D0E0)  # ori r3, r3, 0xD0E0
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 28, 0x80030000)  # lwz r0, 0(r3)
+        #
+        # # +32: Compare
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 32, 0x2C000000)  # cmpwi r0, 0
+        #
+        # # +36: Skip modification if r0 <= 0
+        # # We jump 16 bytes (0x10) to the Cleanup section if the value is not > 0
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 36, self.make_b(CUSTOM_HEAL_CODE + 36,CUSTOM_HEAL_CODE + 52))
+        #
+        # # +40: Decrement and Save
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 40,0x3800FFFF)  # subi r0, r0, 1 (effectively r0 = r0 - 1)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 44, 0x90030000)  # stw r0, 0(r3)
+        #
+        # # +48: Jump to 0x80043288
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 48, self.make_b(CUSTOM_HEAL_CODE + 48, 0x80043288))
+        #
+        # # +52: Cleanup & Return
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 52, 0x80010024)  # lwz r0, 0x0024(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 56, 0x7C0803A6)  # mtlr r0
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 60, 0x80610008)  # lwz r3, 0x0008(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 64, 0x80810010)  # lwz r4, 0x0010(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 68, 0x38210030)  # addi sp, sp, 48
+        # self.patch_iso_from_ram(iso_file, CUSTOM_HEAL_CODE + 72, 0x4E800020)  # blr
+        #
+        # # Code for granting magic crystals akin to blue fairies.
+        # # 0x00: Prologue
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 0, 0x9421FFD0)  # stwu sp, -0x30(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 4, 0x7C0802A6)  # mflr r0
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 8, 0x90010024)  # stw r0, 0x0024(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 12, 0x90610008)  # stw r3, 0x0008(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 16, 0x90810010)  # stw r4, 0x0010(sp)
+        #
+        # # +20: Read the Magic Crystals Trigger value (0x8025d0e0)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 20, 0x3C608025)  # lis r3, 0x8025
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 24, 0x6063D0E0)  # ori r3, r3, 0xD0E0
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 28, 0x80030000)  # lwz r0, 0(r3)
+        #
+        # # +32: Compare
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 32, 0x2C000000)  # cmpwi r0, 0
+        #
+        # # +36: Skip modification if r0 <= 0
+        # # We jump 16 bytes (0x10) to the Cleanup section if the value is not > 0
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 36, 0x41820010)  # ble +0x10
+        #
+        # # +40: Decrement and Save
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 40,0x3800FFFF)  # subi r0, r0, 1 (effectively r0 = r0 - 1)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 44, 0x90030000)  # stw r0, 0(r3)
+        #
+        # # +48: Jump to 0x80042fa4
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 48,self.make_b(CUSTOM_MAGIC_CRYSTALS_CODE + 48, 0x80042fa4))
+        #
+        # # +52: Cleanup & Return
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 52, 0x80010024)  # lwz r0, 0x0024(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 56, 0x7C0803A6)  # mtlr r0
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 60, 0x80610008)  # lwz r3, 0x0008(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 64, 0x80810010)  # lwz r4, 0x0010(sp)
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 68, 0x38210030)  # addi sp, sp, 48
+        # self.patch_iso_from_ram(iso_file, CUSTOM_MAGIC_CRYSTALS_CODE + 72, 0x4E800020)  # blr
         
         #setup for level randomization
         if self.output_data.get("randomize_levels", 0):

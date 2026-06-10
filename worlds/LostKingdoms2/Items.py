@@ -312,4 +312,4 @@ lost_kingdoms_2_items["Progressive Attribute Proficiency: Earth"] = {"Type": "Pr
 lost_kingdoms_2_items["Progressive Attribute Proficiency: Wood"] = {"Type": "Progressive Attribute Proficiency", "Amount": 5, "id": 5003}
 lost_kingdoms_2_items["Progressive Attribute Proficiency: Neutral"] = {"Type": "Progressive Attribute Proficiency", "Amount": 7, "id": 5004}
 lost_kingdoms_2_items["Progressive Attribute Proficiency: Mech"] = {"Type": "Progressive Attribute Proficiency", "Amount": 7, "id": 5005}
-lost_kingdoms_2_items["Blue Fairy"] = {"Type": "Blue Fairy", "Amount": 1, "id": 6000}
+#lost_kingdoms_2_items["Blue Fairy"] = {"Type": "Blue Fairy", "Amount": 1, "id": 6000}
