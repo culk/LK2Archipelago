@@ -733,7 +733,7 @@ def is_level_unlocked(level: str) -> bool:
     return read_memory(int(lost_kingdoms_2_regions[level]["RAMAddress"],16), 1) == 128
 
 def is_in_level() -> bool:
-    return read_memory(IS_IN_LEVEL_ADDRESS) != 255
+    return read_memory(IS_IN_LEVEL_ADDRESS, 1) == 1
 
 def set_shop_contents_to_AP():
     for x in range(40):
