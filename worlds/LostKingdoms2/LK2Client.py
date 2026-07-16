@@ -79,6 +79,7 @@ CUSTOM_ATTRIBUTE_UP_CODE = CUSTOM_LEVEL_UP_CODE+80
 CUSTOM_ATTRIBUTE_UP_TRIGGER = 0x8025d01c
 INVALIDATE_ADDRESS = 0x800f31dc
 PROGRESSIVE_LEVELING_ADDRESS = 0X8025d01d
+MAX_PLAYER_LEVEL = 20
 
 
 ONE_TIME_MODIFIERS_IN_GAME = False
@@ -411,12 +412,14 @@ def give_key_item(ctx,item_name: str) -> bool:
 
 def give_progressive_level(ctx) -> bool:
     try:
-        if read_memory(PROGRESSIVE_LEVELING_ADDRESS, 1)==0:
-            write_memory(PROGRESSIVE_LEVELING_ADDRESS, 1,1)
-        if is_in_level():
-            write_memory(PROGRESSIVE_LEVELING_ADDRESS, read_memory(PROGRESSIVE_LEVELING_ADDRESS, 1)+1,1)
-        else:
-            write_memory(PLAYER_LEVEL_ADDRESS, read_memory(PLAYER_LEVEL_ADDRESS, 1) + 1, 1)
+        current_player_level = read_memory(PLAYER_LEVEL_ADDRESS, 1)
+        if current_player_level < MAX_PLAYER_LEVEL:
+            if is_in_level():
+                # Game code will update current player level.
+                write_memory(PROGRESSIVE_LEVELING_ADDRESS, current_player_level + 1, 1)
+            else:
+                write_memory(PLAYER_LEVEL_ADDRESS, current_player_level + 1, 1)
+                write_memory(PROGRESSIVE_LEVELING_ADDRESS, current_player_level + 1, 1)
         increment_item_index(ctx)
         return True
     except Exception as e:
