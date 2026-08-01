@@ -413,15 +413,18 @@ def give_key_item(ctx,item_name: str) -> bool:
 def give_progressive_level(ctx) -> bool:
     try:
         current_player_level = read_memory(PLAYER_LEVEL_ADDRESS, 1)
-        if current_player_level < MAX_PLAYER_LEVEL:
-            if is_in_level():
-                # Game code will update current player level.
-                write_memory(PROGRESSIVE_LEVELING_ADDRESS, current_player_level + 1, 1)
-            else:
-                write_memory(PLAYER_LEVEL_ADDRESS, current_player_level + 1, 1)
-                write_memory(PROGRESSIVE_LEVELING_ADDRESS, current_player_level + 1, 1)
-        increment_item_index(ctx)
-        return True
+        if current_player_level < 20:
+                if is_in_level():
+                    # Game code will update current player level.
+                    write_memory(PROGRESSIVE_LEVELING_ADDRESS, current_player_level + 1, 1)
+                else:
+                    write_memory(PLAYER_LEVEL_ADDRESS, current_player_level + 1, 1)
+                    write_memory(PROGRESSIVE_LEVELING_ADDRESS, current_player_level + 1, 1)
+                increment_item_index(ctx)
+                return True
+        else:
+            logger.debug("Player is already max level. Level not granted")
+            return True
     except Exception as e:
         logger.error(e)
         return False
@@ -560,38 +563,38 @@ def level_modifications(ctx):
     #Make the runestones placeable in Isamat Urbur
     elif level_id == lost_kingdoms_2_regions["Isamat Urbur"]["levelID"]:
         #Eno Runestone
-        if (item_memory >> 20) & 1:
+        if (item_memory >> 21) & 1:
             write_memory(0x8025d870, 2149662488, 4)
             write_memory(0x8025d867,0,1)
         else:
             write_memory(0x8025d870, 0, 4)
         #Nebeth Runestone
-        if (item_memory >> 26) & 1:
+        if (item_memory >> 27) & 1:
             write_memory(0x8025d860, 2149662216, 4)
         else:
             write_memory(0x8025d860, 0, 4)
         #Olf Runestone
-        if (item_memory >> 23) & 1:
+        if (item_memory >> 24) & 1:
             write_memory(0x8025d880, 2149662760, 4)
         else:
             write_memory(0x8025d880, 0, 4)
         #Ebin Runestone
-        if (item_memory >> 24) & 1:
+        if (item_memory >> 25) & 1:
             write_memory(0x8025d8a0, 2149663304, 4)
         else:
             write_memory(0x8025d8a0, 0, 4)
         #Oht Runestone
-        if (item_memory >> 21) & 1:
+        if (item_memory >> 22) & 1:
             write_memory(0x8025d890, 2149663032, 4)
         else:
             write_memory(0x8025d890, 0, 4)
         #Elise Runestone
-        if (item_memory >> 22) & 1:
+        if (item_memory >> 23) & 1:
             write_memory(0x8025d8c0, 2149663848, 4)
         else:
             write_memory(0x8025d8c0, 0, 4)
         #Keil Runestone
-        if (item_memory >> 25) & 1:
+        if (item_memory >> 26) & 1:
             write_memory(0x8025d8b0, 2149663576, 4)
         else:
             write_memory(0x8025d8b0, 0, 4)

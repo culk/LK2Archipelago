@@ -7,6 +7,7 @@ from typing import Dict
 
 class WinConditionOption(Choice):
     """Choose the win condition.
+    Warning: Emperor win condition may be bugged right now.
     Baseline: 175 locations, 175 items"""
     display_name = "Win Condition"
     option_defeat_god_of_harmony = 0
