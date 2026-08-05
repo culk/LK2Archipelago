@@ -511,6 +511,9 @@ def randomize_levels(ctx):
     level_ordering = randomize_exits()
     logger.debug("Level ordering is:" + str(level_ordering))
 
+def change_player_model():
+    write_memory(0x8005332c, 0x3800002b, 4)
+
 def level_modifications(ctx):
     item_memory = read_memory(KEY_ITEM_ITEM_ADDRESS, 4)
     level_id = read_memory(LEVEL_ID_ADDRESS, 1)
@@ -654,55 +657,55 @@ def level_modifications(ctx):
     else:
         write_memory(0x8006e7c4, 0x80030004, 4)
 
-    if ctx.slot_data.get("randomize_levels", 0):
-        global level_ordering
-        if is_in_level():
-            if level_id == lost_kingdoms_2_regions["Nobleman's Residence"]["levelID"]:
-                write_memory(0x810879f8, lost_kingdoms_2_regions[level_ordering["Nobleman's Residence Exit 1"]]["levelID"], 4)
-                write_memory(0x81088290, lost_kingdoms_2_regions[level_ordering["Nobleman's Residence Exit 2"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Bhashea High Road"]["levelID"]:
-                # Vanilla: Kendarie Fortress (Exit 2), Kadishu (Exit 1), Bhashea Castle (Exit 3)
-                write_memory(0x8113f89c, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 1"]]["levelID"], 4)
-                write_memory(0x8113fcfc, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 2"]]["levelID"], 4)
-                write_memory(0x8113ff08, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 3"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Kadishu"]["levelID"]:
-                # Vanilla: Gromtull Desert (Exit 2), Kadishu Shop (Exit 1)
-                write_memory(0x810c99dc, lost_kingdoms_2_regions[level_ordering["Kadishu Exit 2"]]["levelID"], 4)
-                write_memory(0x810c9774, lost_kingdoms_2_regions[level_ordering["Kadishu Exit 1"]]["levelID"], 4)
-                write_memory(0x810c9780, lost_kingdoms_2_regions[level_ordering["Kadishu Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Gromtull Desert"]["levelID"]:
-                write_memory(0x8106dcac, lost_kingdoms_2_regions[level_ordering["Gromtull Desert Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Kendarie Fortress"]["levelID"]:
-                write_memory(0x81052dbc, lost_kingdoms_2_regions[level_ordering["Kendarie Fortress Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Runestone Caverns - Upper Chambers"]["levelID"]:
-                write_memory(0x80f91f04, lost_kingdoms_2_regions[level_ordering["Runestone Caverns - Upper Chambers Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Runestone Caverns - Lower Chambers"]["levelID"]:
-                write_memory(0x81053798, lost_kingdoms_2_regions[level_ordering["Runestone Caverns - Lower Chambers Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Ruldo Forest"]["levelID"]:
-                # Vanilla: Fossil Boneyard (Exit 1), Sacred Battle Arena 1 (Exit 2)
-                write_memory(0x80ffa518, lost_kingdoms_2_regions[level_ordering["Ruldo Forest Exit 1"]]["levelID"], 4)
-                write_memory(0x80ffacf8, lost_kingdoms_2_regions[level_ordering["Ruldo Forest Exit 2"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Fossil Boneyard"]["levelID"]:
-                write_memory(0x8100f988, lost_kingdoms_2_regions[level_ordering["Fossil Boneyard Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Sarvan"]["levelID"]:
-                write_memory(0x8104b6c8, lost_kingdoms_2_regions[level_ordering["Sarvan Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Holzogh Town"]["levelID"]:
-                write_memory(0x81113dd8, lost_kingdoms_2_regions[level_ordering["Holzogh Town Exit 1"]]["levelID"], 4)
-                write_memory(0x8111488c, lost_kingdoms_2_regions[level_ordering["Holzogh Town Exit 2"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Plains of Rowahl"]["levelID"]:
-                write_memory(0x81044b3c, lost_kingdoms_2_regions[level_ordering["Plains of Rowahl Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Royal Tower, Lower"]["levelID"]:
-                # Vanilla: Krasheen Mountains (Exit 1), Obenoix Gorge (Exit 2)
-                write_memory(0x810c1cf4, lost_kingdoms_2_regions[level_ordering["Royal Tower, Lower Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Krasheen Mountains"]["levelID"]:
-                write_memory(0x80f2743c, lost_kingdoms_2_regions[level_ordering["Krasheen Mountains Exit 1"]]["levelID"], 4)
-            elif level_id == lost_kingdoms_2_regions["Grenfoel Cathedral"]["levelID"]:
-                # Vanilla: Temple of Sharacia (Exit 1), Grenfoel Cathedral Shop (Exit 2)
-                write_memory(0x810ac678, lost_kingdoms_2_regions[level_ordering["Grenfoel Cathedral Exit 1"]]["levelID"], 4)
-                write_memory(0x810ac70c, lost_kingdoms_2_regions[level_ordering["Grenfoel Cathedral Exit 2"]]["levelID"], 4)
-                write_memory(0x810ac718, lost_kingdoms_2_regions[level_ordering["Grenfoel Cathedral Exit 2"]]["levelID"], 4)
-        else:
-            modify_default_level_selections()
+    #if ctx.slot_data.get("randomize_levels", 0):
+    #    global level_ordering
+    #    if is_in_level():
+    #        if level_id == lost_kingdoms_2_regions["Nobleman's Residence"]["levelID"]:
+    #            write_memory(0x810879f8, lost_kingdoms_2_regions[level_ordering["Nobleman's Residence Exit 1"]]["levelID"], 4)
+    #            write_memory(0x81088290, lost_kingdoms_2_regions[level_ordering["Nobleman's Residence Exit 2"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Bhashea High Road"]["levelID"]:
+    #            # Vanilla: Kendarie Fortress (Exit 2), Kadishu (Exit 1), Bhashea Castle (Exit 3)
+    #            write_memory(0x8113f89c, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 1"]]["levelID"], 4)
+    #            write_memory(0x8113fcfc, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 2"]]["levelID"], 4)
+    #            write_memory(0x8113ff08, lost_kingdoms_2_regions[level_ordering["Bhashea High Road Exit 3"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Kadishu"]["levelID"]:
+    #            # Vanilla: Gromtull Desert (Exit 2), Kadishu Shop (Exit 1)
+    #            write_memory(0x810c99dc, lost_kingdoms_2_regions[level_ordering["Kadishu Exit 2"]]["levelID"], 4)
+    #            write_memory(0x810c9774, lost_kingdoms_2_regions[level_ordering["Kadishu Exit 1"]]["levelID"], 4)
+    #            write_memory(0x810c9780, lost_kingdoms_2_regions[level_ordering["Kadishu Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Gromtull Desert"]["levelID"]:
+    #            write_memory(0x8106dcac, lost_kingdoms_2_regions[level_ordering["Gromtull Desert Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Kendarie Fortress"]["levelID"]:
+    #            write_memory(0x81052dbc, lost_kingdoms_2_regions[level_ordering["Kendarie Fortress Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Runestone Caverns - Upper Chambers"]["levelID"]:
+    #            write_memory(0x80f91f04, lost_kingdoms_2_regions[level_ordering["Runestone Caverns - Upper Chambers Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Runestone Caverns - Lower Chambers"]["levelID"]:
+    #            write_memory(0x81053798, lost_kingdoms_2_regions[level_ordering["Runestone Caverns - Lower Chambers Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Ruldo Forest"]["levelID"]:
+    #            # Vanilla: Fossil Boneyard (Exit 1), Sacred Battle Arena 1 (Exit 2)
+    #            write_memory(0x80ffa518, lost_kingdoms_2_regions[level_ordering["Ruldo Forest Exit 1"]]["levelID"], 4)
+    #            write_memory(0x80ffacf8, lost_kingdoms_2_regions[level_ordering["Ruldo Forest Exit 2"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Fossil Boneyard"]["levelID"]:
+    #            write_memory(0x8100f988, lost_kingdoms_2_regions[level_ordering["Fossil Boneyard Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Sarvan"]["levelID"]:
+    #            write_memory(0x8104b6c8, lost_kingdoms_2_regions[level_ordering["Sarvan Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Holzogh Town"]["levelID"]:
+    #            write_memory(0x81113dd8, lost_kingdoms_2_regions[level_ordering["Holzogh Town Exit 1"]]["levelID"], 4)
+    #            write_memory(0x8111488c, lost_kingdoms_2_regions[level_ordering["Holzogh Town Exit 2"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Plains of Rowahl"]["levelID"]:
+    #            write_memory(0x81044b3c, lost_kingdoms_2_regions[level_ordering["Plains of Rowahl Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Royal Tower, Lower"]["levelID"]:
+    #            # Vanilla: Krasheen Mountains (Exit 1), Obenoix Gorge (Exit 2)
+    #            write_memory(0x810c1cf4, lost_kingdoms_2_regions[level_ordering["Royal Tower, Lower Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Krasheen Mountains"]["levelID"]:
+    #            write_memory(0x80f2743c, lost_kingdoms_2_regions[level_ordering["Krasheen Mountains Exit 1"]]["levelID"], 4)
+    #        elif level_id == lost_kingdoms_2_regions["Grenfoel Cathedral"]["levelID"]:
+    #            # Vanilla: Temple of Sharacia (Exit 1), Grenfoel Cathedral Shop (Exit 2)
+    #            write_memory(0x810ac678, lost_kingdoms_2_regions[level_ordering["Grenfoel Cathedral Exit 1"]]["levelID"], 4)
+    #            write_memory(0x810ac70c, lost_kingdoms_2_regions[level_ordering["Grenfoel Cathedral Exit 2"]]["levelID"], 4)
+    #            write_memory(0x810ac718, lost_kingdoms_2_regions[level_ordering["Grenfoel Cathedral Exit 2"]]["levelID"], 4)
+    #    else:
+    #        modify_default_level_selections()
 
 def modify_default_level_selections():
     if is_level_unlocked("Runestone Caverns - Upper Chambers"):

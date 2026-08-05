@@ -714,6 +714,7 @@ class LostKingdoms2World(World):
             "randomize_levels": self.options.randomize_levels.value,
             "progressive_leveling": self.options.progressive_leveling.value,
             "progressive_attribute_proficiencies":self.options.progressive_attribute_proficiencies.value,
+            "level_randomization_mapping": level_ordering,
             AP_WORLD_VERSION_NAME: CLIENT_VERSION
         }
 

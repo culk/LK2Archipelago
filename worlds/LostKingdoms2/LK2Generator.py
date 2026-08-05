@@ -75,6 +75,36 @@ class LK2Randomizer:
         logger.info("Rom copied to " + destination)
         return destination
 
+    def modify_level_unlock_data(self, iso_file, level_mapping):
+        ram_addrs_for_exit = {
+            "Nobleman's Residence Exit 1": [0x06D431D8],
+            "Nobleman's Residence Exit 2": [0x06D43A70],
+            "Bhashea High Road Exit 1": [0x072A0FBC],
+            "Bhashea High Road Exit 2": [0x072A141C],
+            "Bhashea High Road Exit 3": [0x072A1628],
+            "Kadishu Exit 1": [0x077921F4, 0x07792200],  # Unlock address, load address
+            "Kadishu Exit 2": [0x0779245C],
+            "Gromtull Desert Exit 1": [0x0C9848AC, 0x07792188],  # Desert save Jarvi address, Kadishu road to Jarvi's House address
+            "Kendarie Fortress Exit 1": [0x07C1825C],
+            "Runestone Caverns - Upper Chambers Exit 1": [0x07FCA384],
+            "Runestone Caverns - Lower Chambers Exit 1": [0x0843DB58],
+            "Ruldo Forest Exit 1": [0x0885F278],
+            "Ruldo Forest Exit 2": [0x0885FA58],
+            "Fossil Boneyard Exit 1": [0x0B464FA8],
+            "Sarvan Exit 1": [0x08CD2628],
+            "Holzogh Town Exit 1": [0x0920D658],
+            "Holzogh Town Exit 2": [0x0920E10C],
+            "Plains of Rowahl Exit 1": [0x09679E5C],
+            "Royal Tower, Lower Exit 1": [0x0B94DF94],
+            "Krasheen Mountains Exit 1": [0x0A25D4FC],
+            "Grenfoel Cathedral Exit 1": [0x0A730E38],
+            "Grenfoel Cathedral Exit 2": [0x0A730ECC, 0x0A730ED8],  # Unlock address, load address
+        }
+        for exit, region in level_mapping.items():
+            for ram_address in ram_addrs_for_exit[exit]:
+                iso_file.seek(int(ram_address))
+                iso_file.write(int(lost_kingdoms_2_regions[region]["levelID"]).to_bytes(4, byteorder='big'))
+
     def write_to_iso(self, iso):
         with open(iso, 'r+b') as iso_file:
             for key in lost_kingdoms_2_chests:
@@ -92,6 +122,8 @@ class LK2Randomizer:
                 self.randomize_shop_contents(iso_file)
             if self.output_data.get("randomize_bonus_draws", 0):
                 self.randomize_bonus_draws(iso_file)
+            if self.output_data.get("randomize_levels", 0):
+                self.modify_level_unlock_data(iso_file, self.output_data.get("level_randomization_mapping", dict()))
 
         self.write_string(iso,0x1E000,0x00000100,0x80003100,0x80003DA0,self.output_data["Name"])
 
@@ -107,6 +139,9 @@ class LK2Randomizer:
         self.patch_iso_from_ram(iso_file, 0x8007b334, 0x3C608026)
         self.patch_iso_from_ram(iso_file, 0x8007b338, 0x8003D014)
         self.patch_iso_from_ram(iso_file, 0x800dc438, 0x60000000)
+
+        # Player model
+        self.patch_iso_from_ram(iso_file, 0x8005332c, 0x3800002b)
 
         if self.output_data.get("fairysanity", 0):
             self.patch_iso_from_ram(iso_file, 0x80077034, 0x38040000)
