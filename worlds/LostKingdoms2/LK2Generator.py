@@ -105,6 +105,46 @@ class LK2Randomizer:
                 iso_file.seek(int(ram_address))
                 iso_file.write(int(lost_kingdoms_2_regions[region]["levelID"]).to_bytes(4, byteorder='big'))
 
+    def modify_audio_streams(self, iso_file):
+        # Shuffle level music streams, this method of renaming audio stream files requires that there
+        # is a 1:1 mapping between levels and music and that file name length doesn't change.
+        # Audio stream files beginning with an "m" are level background music. The first two digits
+        # after the "m" are the level ID and the last digit is "0" for the normal background music
+        # and a different number if it is for a cutscene. Files beginning with a "p" are voice lines
+        # and are not shuffled.
+
+        # Other streams that could potentially be shuffled with each other: Battle, Lasbos, VSMenu
+        streams_to_shuffle = [
+            b"m010", b"m020", b"m030", b"m040", b"m050", b"m060", b"m070", b"m080", b"m090", b"m100",
+            b"m110", b"m120", b"m130", b"m140", b"m150", b"m160", b"m170", b"m180", b"m190", b"m200",
+            b"m210", b"m220", b"m230", b"m240", b"m250", b"m260", b"m270", b"m400", b"m410", b"m420",
+            b"m750", b"m900", b"m910", b"m920", b"m930", b"m940", b"m950"
+        ]
+        random.seed(self.output_data.get("Seed", -1))
+        shuffled_streams = random.sample(streams_to_shuffle, len(streams_to_shuffle))
+
+        # Read in all stream file names as byte strings.
+        start_address = 0x00195F20
+        end_address = 0x0019709C
+        length = end_address - start_address
+        iso_file.seek(start_address)
+        stream_name_byte_strings = iso_file.read(length).split(b'\0')
+        new_stream_name_byte_strings = []
+        for name_bytes in stream_name_byte_strings:
+            if name_bytes[:4] not in streams_to_shuffle:
+                # Stream should not be shuffled, leave it in its place.
+                new_stream_name_byte_strings.append(name_bytes)
+                continue
+            # Replace the stream name with its shuffled replacement while maintaining left/right stereo.
+            if name_bytes[4:] == b"L.dsp":
+                new_stream_name_byte_strings.append(shuffled_streams[-1] + b"L.dsp")
+            elif name_bytes[4:] == b"R.dsp":
+                new_stream_name_byte_strings.append(shuffled_streams.pop(-1) + b"R.dsp")
+
+        # Write the newly shuffled list of stream file names.
+        iso_file.seek(start_address)
+        iso_file.write(b'\0'.join(new_stream_name_byte_strings))
+
     def write_to_iso(self, iso):
         with open(iso, 'r+b') as iso_file:
             for key in lost_kingdoms_2_chests:
@@ -124,6 +164,7 @@ class LK2Randomizer:
                 self.randomize_bonus_draws(iso_file)
             if self.output_data.get("randomize_levels", 0):
                 self.modify_level_unlock_data(iso_file, self.output_data.get("level_randomization_mapping", dict()))
+            self.modify_audio_streams(iso_file)
 
         self.write_string(iso,0x1E000,0x00000100,0x80003100,0x80003DA0,self.output_data["Name"])
 
