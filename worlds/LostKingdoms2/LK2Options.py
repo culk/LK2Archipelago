@@ -58,6 +58,12 @@ class EnemysanityConditionOption(Choice):
     option_enemysanity_plus = 4
     default = 0
 
+class BreaksanityOption(Toggle):
+    """All breakable objects in levels are checks(for example, the crates in Nobleman's Residence)
+    +268 locations"""
+    display_name = "Breaksanity"
+    default = 0
+
 class ProgressiveLevelingOption(Toggle):
     """Choose whether to have character levels as a progressive item. You will no longer be able to level up normally.
     +19 items"""
@@ -301,6 +307,7 @@ class LostKingdoms2Options(PerGameCommonOptions):
     shopsanity: ShopsanityConditionOption
     combosanity: CombosanityConditionOption
     enemysanity: EnemysanityConditionOption
+    breaksanity: BreaksanityOption
     open_world : OpenWorldConditionOption
     level_unlocks_as_items : LevelUnlocksAsItems
     exclude_sacred_battle_arena_checks: ExcludeSacredBattleArenaChecksOption

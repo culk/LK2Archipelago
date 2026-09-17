@@ -57,9 +57,7 @@ TEMP_DECK_ADDRESS = 0x80257ada
 KADISHU_SHOP_1_AND_2_ADDRESS = 0x8123cdc0
 KADISHU_SHOP_3_ADDRESS = 0x8124aa60
 CATHEDRAL_SHOP_ADDRESS = 0x812b2880
-KADISHU_SHOP_1_AND_2_UI_SELECTION_ADDRESS = 0x8125884a
-KADISHU_SHOP_3_UI_SELECTION_ADDRESS = 0x8123a7aa
-CATHEDRAL_SHOP_UI_SELECTION_ADDRESS = 0x812b026a
+SHOP_UI_SELECTION_ADDRESS = 0x802E96C8
 SHOP_SUB_UI_FLAG = 0x80275c58
 THIRD_SHOP_UNLOCK_FLAG = 0x8025e04c
 SHOP_MENU_ADDRESS = 0x80275c58
@@ -83,7 +81,9 @@ STORAGE_ADDRESSES = {
     'progressive_neutral_attribute': {'address': 0x8025ed5b, 'size': 1},
     'progressive_mech_attribute':    {'address': 0x8025ed5c, 'size': 1},
     'shop_location':                 {'address': 0x8025ed5d, 'size': 5},
-    'level_progress':              {'address': 0x8025ed90, 'size': 90},
+    'level_progress':                {'address': 0x8025ed90, 'size': 90},
+    'shop_item_name':                {'address': 0x8025edea, 'size': 21},
+    'shop_purchased':                {'address': 0x8025edff, 'size': 5},
 }
 
 PLAYER1_META_ADDRESSES = {
@@ -119,6 +119,8 @@ ONE_TIME_MODIFIERS_IN_GAME = False
 ONE_TIME_MODIFIERS_MAIN_MENU = False
 HAS_GOALED = False
 PLAYER_PREVIOUS_GOLD = 0
+
+shopsanity_location_purchased = ""
 
 randomized_monster_mapping = {}
 
@@ -309,6 +311,14 @@ def read_string(console_address: int, strlen: int) -> str:
     """
     string = dolphin_memory_engine.read_bytes(console_address, strlen).split(b"\0", 1)[0].decode()
     return string
+
+def write_string(console_address: int, value: str, buffer_size: int) -> None:
+    text = value.replace("%", "%%")
+    encoded = text.encode("ascii", errors="replace")[:buffer_size - 1]
+    if encoded.count(b"%") % 2:          # never end on a half-escaped pair
+        encoded = encoded[:-1]
+    padded = encoded + b"\0" * (buffer_size - len(encoded))
+    dolphin_memory_engine.write_bytes(console_address, padded)
 
 def replace_game_id(ctx:LK2Context):
         data = f"{ctx.slot_data.get("Seed", -1)}:{ctx.slot_data.get("Slot", -1)}".encode()
@@ -752,14 +762,35 @@ def check_regular_location(ctx: LK2Context, location: str) -> bool:
                 case "Enemysanity Light":
                     if is_in_level() and ctx.slot_data.get("enemysanity", 0) in (1,2):
                         return check_enemy_death_light(ctx,location, current_level)
-                case "Shop Purchase":
-                    memory_value = read_memory(STORAGE_ADDRESSES["shop_location"]["address"], STORAGE_ADDRESSES["shop_location"]["size"])
-                    bit_value = (memory_value >> lost_kingdoms_2_shop_purchases[location]["bitOffset"]) & 1
-                    return bit_value
+                case "Shopsanity":
+                    global shopsanity_location_purchased
+                    if shopsanity_location_purchased == location:
+                        shopsanity_location_purchased = ""
+                        return True
+                case "Breaksanity":
+                    if ctx.slot_data.get("breaksanity", 0):
+                        if is_in_level():
+                                return check_breakable(location)
+                        else:
+                            lost_kingdoms_2_breakables[location]["currentState"] = 0
+
+
 
     #If on the world map, reset any enemysanity states from 1 to 0
     if read_memory(CURRENT_MENU_ADDR,1) == 4 and lost_kingdoms_2_locations[location]["type"] == "Enemysanity" and lost_kingdoms_2_locations[location]["currentState"] == 1:
         lost_kingdoms_2_locations[location]["currentState"] = 0
+    return False
+
+def check_breakable(location):
+    if lost_kingdoms_2_breakables[location]["currentState"] == 0:
+        if read_memory(int(lost_kingdoms_2_breakables[location]["RAMAddress"], 16)+7,1) == 0:
+            lost_kingdoms_2_breakables[location]["currentState"] = 1
+            return False
+    elif lost_kingdoms_2_breakables[location]["currentState"] == 1:
+        if read_memory(int(lost_kingdoms_2_breakables[location]["RAMAddress"], 16)+7,1) > 0:
+            lost_kingdoms_2_breakables[location]["currentState"] = 2
+            return True
+
     return False
 
 def check_enemy_death(ctx: LK2Context,location: str) -> bool:
@@ -967,35 +998,50 @@ def check_inshop() -> bool:
     except:
         return False
 
-async def track_shop_purchases():
-    shop_id = 0
-    shop_address = KADISHU_SHOP_1_AND_2_ADDRESS
-    ui_address = KADISHU_SHOP_1_AND_2_UI_SELECTION_ADDRESS
-    if read_memory(LEVEL_ID_ADDRESS, 1) == 42:
-        shop_id = 3
-        shop_address = CATHEDRAL_SHOP_ADDRESS
-        ui_address = CATHEDRAL_SHOP_UI_SELECTION_ADDRESS
-    elif read_memory(int(lost_kingdoms_2_regions["Runestone Caverns - Lower Chambers"]["RAMAddress"],16)-0x2, 1) == 1:
-        if read_memory(THIRD_SHOP_UNLOCK_FLAG, 1) == 1:
-            shop_id = 2
-            shop_address = KADISHU_SHOP_3_ADDRESS
-            ui_address = KADISHU_SHOP_3_UI_SELECTION_ADDRESS
-        else:
-            shop_id = 1
+async def track_shop_purchases(ctx: LK2Context):
+    try:
+        index = read_memory(read_memory(SHOP_UI_SELECTION_ADDRESS,4)+0x0A,2)
+    except Exception as e:
+        index = 0
+        logger.debug("Something broke with shopsanity")
+        logger.error(e)
 
     if read_memory(SHOP_SUB_UI_FLAG) == 1:
+        location_ids = []
+        for loc in lost_kingdoms_2_shopsanity:
+            if location_name_to_id[loc] not in ctx.locations_info:
+                location_ids.append(location_name_to_id[loc])
+
+        if len(location_ids) > 0:
+            await scout_locations(ctx, location_ids)
         global PLAYER_PREVIOUS_GOLD
+        try:
+            location_info = ctx.locations_info.get(location_name_to_id[list(lost_kingdoms_2_shopsanity.keys())[index]])
+            if location_info is None:
+                write_string(STORAGE_ADDRESSES["shop_item_name"]["address"],"N/A", 20)
+            else:
+                write_string(STORAGE_ADDRESSES["shop_item_name"]["address"], str(ctx.item_names.lookup_in_slot(location_info.item, location_info.player)), 20)
+        except Exception as e:
+            logger.debug("Something broke with shopsanity")
+            logger.error(e)
+
         current_gold = read_memory(PLAYER1_META_ADDRESSES["player_gold"]["address"],PLAYER1_META_ADDRESSES["player_gold"]["size"])
         if current_gold < PLAYER_PREVIOUS_GOLD:
-            index = read_memory(ui_address) + 10*shop_id
-            logger.debug("shop index" + str(index))
-            shop_location_data = read_memory(STORAGE_ADDRESSES["shop_location"]["address"], STORAGE_ADDRESSES["shop_location"]["size"])
-            logger.debug("shop location data before: " + str(shop_location_data))
-            if (shop_location_data >> index) & 1 == 0:
-                shop_location_data = shop_location_data | (1<<index)
-                logger.debug("shop location data after: " + str(shop_location_data))
-                write_memory(STORAGE_ADDRESSES["shop_location"]["address"], shop_location_data, STORAGE_ADDRESSES["shop_location"]["size"])
+            global shopsanity_location_purchased
+            shopsanity_location_purchased = list(lost_kingdoms_2_shopsanity.keys())[index]
+            logger.debug(list(lost_kingdoms_2_shopsanity.keys())[index])
         PLAYER_PREVIOUS_GOLD = current_gold
+
+async def scout_locations(ctx: LK2Context, location_ids):
+    logger.debug(f"Scouting locations" + str(location_ids))
+
+    if len(location_ids) > 0:
+        ctx.locations_scouted.update(location_ids)
+        await ctx.send_msgs([{
+            "cmd": "LocationScouts",
+            "locations": location_ids,
+            "create_as_hint": 0
+        }])
 
 
 async def dolphin_sync_task_main_task(ctx: LK2Context):
@@ -1050,8 +1096,8 @@ async def dolphin_sync_task_main_task(ctx: LK2Context):
                     if check_ingame():
                         if "DeathLink" in ctx.tags:
                             await check_death(ctx)
-                        #if ctx.slot_data.get("shopsanity", 0) & check_inshop():
-                            #await track_shop_purchases()
+                        if ctx.slot_data.get("shopsanity", 0) & check_inshop():
+                            await track_shop_purchases(ctx)
                         level_modifications(ctx)
                         await check_victory_conditions(ctx)
                         await give_items(ctx)

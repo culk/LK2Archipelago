@@ -762,6 +762,10 @@ def _apply_mechanics(patcher: ISOPatcher, output_data: dict, cardback_gtx: bytes
         from .Patch_Mechanics import mechanic_randomize_shop_contents
         mechanic_randomize_shop_contents.apply(patcher, output_data)
 
+    if output_data.get("shopsanity",0):
+        from .Patch_Mechanics import mechanic_shopsanity
+        mechanic_shopsanity.apply(patcher)
+
     if output_data.get("randomize_bonus_draws", 0):
         from .Patch_Mechanics import mechanic_randomize_bonus_draws
         mechanic_randomize_bonus_draws.apply(patcher, output_data)
@@ -770,5 +774,5 @@ def _apply_mechanics(patcher: ISOPatcher, output_data: dict, cardback_gtx: bytes
         from .Patch_Mechanics import mechanic_randomize_music
         mechanic_randomize_music.apply(patcher, output_data)
 
-    #rom .Patch_Mechanics import mechanic_world_map_variations
-    #mechanic_world_map_variations.apply(patcher, output_data)
+    from .Patch_Mechanics import mechanic_world_map_variations
+    mechanic_world_map_variations.apply(patcher, output_data)

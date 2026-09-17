@@ -142,7 +142,7 @@ class LostKingdoms2World(World):
                 lost_kingdoms_2_filler_cards.append(key)
             else:
                 lost_kingdoms_2_progression_cards.append(key)
-        num_of_random_cards = len(lost_kingdoms_2_chests)+ (self.options.combosanity.value * len(lost_kingdoms_2_combos)) + (self.options.shopsanity.value * len(lost_kingdoms_2_shop_purchases)) - len(lost_kingdoms_2_progression_cards) - 19 * self.options.progressive_leveling.value - 34 * self.options.progressive_attribute_proficiencies.value - self.options.level_unlocks_as_items * len(lost_kingdoms_2_level_unlocks)
+        num_of_random_cards = len(lost_kingdoms_2_chests)+ (self.options.combosanity.value * len(lost_kingdoms_2_combos)) + (self.options.breaksanity.value * len(lost_kingdoms_2_breakables)) + (self.options.shopsanity.value * len(lost_kingdoms_2_shopsanity)) - len(lost_kingdoms_2_progression_cards) - 19 * self.options.progressive_leveling.value - 34 * self.options.progressive_attribute_proficiencies.value - self.options.level_unlocks_as_items * len(lost_kingdoms_2_level_unlocks)
         match self.options.enemysanity.value:
             case 1:
                 for location in lost_kingdoms_2_enemysanity_light:
@@ -415,8 +415,6 @@ class LostKingdoms2World(World):
                 continue
             if lost_kingdoms_2_locations[key]["type"] == "Bonus Draw":
                 continue
-            if lost_kingdoms_2_locations[key]["type"] == "Shop Purchase" and self.options.shopsanity.value==0:
-                continue
             if lost_kingdoms_2_locations[key]["type"] == "Enemysanity" and self.options.enemysanity.value not in [3,4]:
                 continue
             if lost_kingdoms_2_locations[key]["type"] == "Enemysanity" and "Proving Grounds" in key and self.options.enemysanity.value!=4:
@@ -424,6 +422,10 @@ class LostKingdoms2World(World):
             if lost_kingdoms_2_locations[key]["type"] == "Enemysanity Light" and self.options.enemysanity.value not in [1,2]:
                 continue
             if lost_kingdoms_2_locations[key]["type"] == "Enemysanity Light" and lost_kingdoms_2_locations[key]["proving_grounds"] and self.options.enemysanity.value != 2:
+                continue
+            if lost_kingdoms_2_locations[key]["type"] == "Breaksanity" and self.options.enemysanity.value==0:
+                continue
+            if lost_kingdoms_2_locations[key]["type"] == "Shopsanity" and self.options.shopsanity.value==0:
                 continue
             level_names = lost_kingdoms_2_locations[key]["level"]
             if not isinstance(level_names, list):
@@ -714,6 +716,13 @@ class LostKingdoms2World(World):
             if self.options.exclude_sacred_battle_arena_checks.value and "Sacred Battle Arena" in location.name:
                 location.progress_type = LocationProgressType.EXCLUDED
 
+            if "Shopsanity" in location.name:
+                number = int(location.name.split("#")[1])
+                if 10 <= number < 20:
+                    add_rule(location, lambda state: state.can_reach_region("Runestone Caverns - Lower Chambers", self.player))
+                elif 20 <= number < 30:
+                    add_rule(location, lambda state: state.can_reach_region("Runestone Caverns - Lower Chambers", self.player) and state.can_reach_region("Royal Tower, Lower", self.player))
+
             match location.name:
                 case "Sacred Battle Arena 1 - defeat Lich" | "Enemysanity - Lich" | "Sacred Battle Arena 1 - Enemysanity - Lich #1":
                     if self.options.progressive_attribute_proficiencies.value:
@@ -733,10 +742,16 @@ class LostKingdoms2World(World):
                 case "Sacred Battle Arena 2 - defeat AstroBot" | "Sacred Battle Arena 2 - Red Fairy machines" | "Sacred Battle Arena 2 - Enemysanity - AstroBot #1" | "Enemysanity - AstroBot" :
                     if self.options.progressive_attribute_proficiencies.value:
                         add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Mech",self.player,5))
-                case "Sacred Battle Arena 2 - defeat Leod" | "Sacred Battle Arena 2 - Enemysanity - Leod #1" |"Enemysanity - Leod" :
+                case "Sacred Battle Arena 2 - defeat Leod" | "Sacred Battle Arena 2 - Enemysanity - Leod VIII #1" |"Enemysanity - Leod VIII" :
                     add_rule(location,lambda state: state.can_reach_region("Royal Tower, Upper", self.player), self.player)
                     if self.options.progressive_attribute_proficiencies.value:
                         add_rule(location, lambda state: state.has("Progressive Attribute Proficiency: Mech",self.player,5))
+                case "Enemysanity - Leod VIII":
+                    if self.options.progressive_attribute_proficiencies.value:
+                        add_rule(location, lambda state: state.can_reach_region("Royal Tower, Upper", self.player) and state.has("Progressive Attribute Proficiency: Mech", self.player, 5))
+                    else:
+                        add_rule(location, lambda state: state.can_reach_region("Royal Tower, Upper", self.player))
+                    add_rule(location, lambda state: state.can_reach_region("Royal Tower, Middle", self.player), "or")
                 case "Sacred Battle Arena 2 - defeat Thalnos" | "Sacred Battle Arena 2 - defeat Katia" | "Sacred Battle Arena 2 - Red Fairy Queen Katia" | "Sacred Battle Arena 2 - Enemysanity - Thalnos #1" | "Sacred Battle Arena 2 - Enemysanity - Katia #1" | "Enemysanity - Thalnos" | "Enemysanity - Katia"  :
                     add_rule(location, lambda state: state.can_reach_region("Royal Tower, Upper", self.player), self.player)
                     if self.options.progressive_attribute_proficiencies.value:
@@ -748,7 +763,7 @@ class LostKingdoms2World(World):
                     add_rule(location, lambda state: state.can_reach_region("Gromtull Desert", self.player) and lost_kingdoms_2_logic["black_liquid_logic"], "or")
                     add_rule(location, lambda state: state.can_reach_region("Ruldo Forest", self.player), "or")
                     add_rule(location, lambda state: state.can_reach_region("Fossil Boneyard", self.player) and lost_kingdoms_2_logic["jump_and_boosters"], "or")
-                    add_rule(location, lambda state: state.can_reach_region("Plains of Rowahl", self.player), "or")
+                    add_rule(location, lambda state: state.can_reach_region("Plains of Rowahl", self.player) and lost_kingdoms_2_logic["castle_gate"], "or")
                     add_rule(location, lambda state: state.can_reach_region("Sacred Battle Arena 1", self.player), "or")
                 case "Combo - Triple Hagan":
                     add_rule(location, lambda state: state.has("Rock Hagan", self.player))
@@ -911,6 +926,7 @@ class LostKingdoms2World(World):
             "shopsanity": self.options.shopsanity.value,
             "combosanity": self.options.combosanity.value,
             "enemysanity": self.options.enemysanity.value,
+            "breaksanity": self.options.breaksanity.value,
             "open_world": self.options.open_world.value,
             "level_unlocks_as_items": self.options.level_unlocks_as_items.value,
             "exclude_sacred_battle_arena_checks": self.options.exclude_sacred_battle_arena_checks.value,
@@ -990,6 +1006,7 @@ class LostKingdoms2World(World):
             "shopsanity": self.options.shopsanity.value,
             "combosanity": self.options.combosanity.value,
             "enemysanity": self.options.enemysanity.value,
+            "breaksanity": self.options.breaksanity.value,
             "open_world": self.options.open_world.value,
             "level_unlocks_as_items": self.options.level_unlocks_as_items.value,
             "exclude_sacred_battle_arena_checks": self.options.exclude_sacred_battle_arena_checks.value,
